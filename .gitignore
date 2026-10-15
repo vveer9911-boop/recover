@@ -1,18 +1,35 @@
 # Dependencies
 node_modules/
-*/node_modules/
 
 # Expo / build
 .expo/
-*/.expo/
 dist/
-*/dist/
 web-build/
-*/web-build/
+expo-env.d.ts
 
-# Logs and system
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
 npm-debug.*
 yarn-debug.*
 *.log
+
+# macOS
 .DS_Store
-Thumbs.db
+*.pem
+
+# typescript
+*.tsbuildinfo
+
+# Subfolder cleanup
+recover-app/
