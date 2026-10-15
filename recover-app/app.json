@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": " ",
+    "slug": "recover",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/recover.jpg",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#ffffff",
+    "primaryColor": "#ffffff",
+    "splash": {
+      "image": "./assets/splash-coin.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "userInterfaceStyle": "dark",
+      "backgroundColor": "#ffffff",
+      "splash": {
+        "image": "./assets/splash-coin.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#000000",
+        "foregroundImage": "./assets/recover.jpg",
+        "backgroundImage": "./assets/recover.jpg",
+        "monochromeImage": "./assets/recover.jpg"
+      },
+      "userInterfaceStyle": "dark",
+      "backgroundColor": "#ffffff",
+      "splash": {
+        "image": "./assets/splash-coin.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#ffffff"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/recover.jpg",
+      "backgroundColor": "#ffffff",
+      "splash": {
+        "image": "./assets/splash-coin.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "plugins": [
+      "expo-font",
+      "expo-status-bar"
+    ]
+  }
+}
