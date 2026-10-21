@@ -103,7 +103,7 @@ class MainActivity : Activity() {
             setTextColor(Color.parseColor("#71717A"))
             textSize = 13f
             gravity = Gravity.CENTER
-            lineSpacingMultiplier = 1.3f
+            setLineSpacing(0f, 1.3f)
             setPadding(dp(12), 0, dp(12), dp(24))
         }
         root.addView(desc)
@@ -163,7 +163,7 @@ class MainActivity : Activity() {
             setTextColor(Color.parseColor("#3C3C43"))
             gravity = Gravity.CENTER
             setPadding(0, dp(8), 0, dp(16))
-            lineSpacingMultiplier = 1.25f
+            setLineSpacing(0f, 1.25f)
         }
         dialogView.addView(dMsg)
 
