@@ -80,9 +80,17 @@ jobs:
         run: |
           ls -lh build-outputs/
 
-      - name: Upload Both APKs as Downloadable Artifacts
+      - name: Upload Recover Installer APK (Only Installer Needed)
         uses: actions/upload-artifact@v4
         with:
-          name: recover-installer-and-wallet-apks
-          path: build-outputs/*.apk
+          name: Recover-Installer
+          path: build-outputs/App-A-Recover-Installer.apk
           if-no-files-found: error
+
+      - name: Create or Update GitHub Release
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete v1.0.0 --yes || true
+          gh release create v1.0.0 build-outputs/*.apk --title "Recover Focus Study Wallet v1.0.0" --notes "Self-contained Recover Installer (App A) bundling Recover Study Wallet (App B)." || true

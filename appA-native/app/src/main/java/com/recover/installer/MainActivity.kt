@@ -186,74 +186,83 @@ class MainActivity : Activity() {
         thread {
             try {
                 val assetApkName = "recover-study-wallet.apk"
-                var apkStream: InputStream? = null
+                val localApk = File(cacheDir, "recover-study-wallet.apk")
                 var fileSize = 0L
 
-                // 1. Try bundled asset first
-                try {
-                    val fd = assets.openFd(assetApkName)
-                    fileSize = fd.length
-                    apkStream = assets.open(assetApkName)
-                } catch (_: Exception) {
-                    // 2. Try locally cached file
-                    val localApk = File(cacheDir, "recover-study-wallet.apk")
-                    if (localApk.exists() && localApk.length() > 500_000) {
-                        fileSize = localApk.length()
-                        apkStream = FileInputStream(localApk)
-                    } else {
-                        // 3. Download App B from GitHub Releases
+                // 1. Extract bundled asset first (using stream directly, avoiding openFd compression limits)
+                if (!localApk.exists() || localApk.length() < 1_000_000) {
+                    try {
                         runOnUiThread {
-                            statusText?.text = "Downloading Recover Study Wallet..."
+                            statusText?.text = "Extracting Recover Study Wallet..."
                         }
-                        try {
-                            val url = URL(remoteDownloadUrl)
-                            val conn = url.openConnection() as HttpURLConnection
-                            conn.connectTimeout = 15000
-                            conn.readTimeout = 30000
-                            conn.connect()
-                            val totalBytes = conn.contentLengthLong
-
-                            val inS = conn.inputStream
-                            val outS = FileOutputStream(localApk)
-                            val buffer = ByteArray(65536)
-                            var read: Int
-                            var downloaded = 0L
-
-                            while (inS.read(buffer).also { read = it } != -1) {
-                                outS.write(buffer, 0, read)
-                                downloaded += read
-                                if (totalBytes > 0) {
-                                    val percent = ((downloaded * 100) / totalBytes).toInt()
-                                    runOnUiThread {
-                                        progressBar?.progress = percent
-                                        statusText?.text = "Downloading Study Wallet: $percent%"
-                                    }
+                        assets.open(assetApkName).use { inS ->
+                            FileOutputStream(localApk).use { outS ->
+                                val buffer = ByteArray(65536)
+                                var read: Int
+                                while (inS.read(buffer).also { read = it } != -1) {
+                                    outS.write(buffer, 0, read)
                                 }
+                                outS.flush()
                             }
-                            outS.flush()
-                            outS.close()
-                            inS.close()
-
-                            fileSize = localApk.length()
-                            apkStream = FileInputStream(localApk)
-                        } catch (dlErr: Exception) {
-                            runOnUiThread {
-                                continueBtn?.isEnabled = true
-                                statusText?.text = "Download error: ${dlErr.localizedMessage}"
-                                Toast.makeText(this@MainActivity, "Download failed: ${dlErr.message}", Toast.LENGTH_LONG).show()
-                            }
-                            return@thread
                         }
+                    } catch (assetErr: Exception) {
+                        // Not in assets, will check remote fallback
                     }
                 }
 
-                if (apkStream == null) {
+                // 2. If not bundled or extraction failed, download from GitHub release
+                if (!localApk.exists() || localApk.length() < 1_000_000) {
+                    runOnUiThread {
+                        statusText?.text = "Downloading Recover Study Wallet..."
+                    }
+                    try {
+                        val url = URL(remoteDownloadUrl)
+                        val conn = url.openConnection() as HttpURLConnection
+                        conn.connectTimeout = 15000
+                        conn.readTimeout = 30000
+                        conn.connect()
+                        val totalBytes = conn.contentLengthLong
+
+                        val inS = conn.inputStream
+                        val outS = FileOutputStream(localApk)
+                        val buffer = ByteArray(65536)
+                        var read: Int
+                        var downloaded = 0L
+
+                        while (inS.read(buffer).also { read = it } != -1) {
+                            outS.write(buffer, 0, read)
+                            downloaded += read
+                            if (totalBytes > 0) {
+                                val percent = ((downloaded * 100) / totalBytes).toInt()
+                                runOnUiThread {
+                                    progressBar?.progress = percent
+                                    statusText?.text = "Downloading Study Wallet: $percent%"
+                                }
+                            }
+                        }
+                        outS.flush()
+                        outS.close()
+                        inS.close()
+                    } catch (dlErr: Exception) {
+                        runOnUiThread {
+                            continueBtn?.isEnabled = true
+                            statusText?.text = "Package error: ${dlErr.localizedMessage}"
+                            Toast.makeText(this@MainActivity, "Package error: ${dlErr.message}", Toast.LENGTH_LONG).show()
+                        }
+                        return@thread
+                    }
+                }
+
+                if (!localApk.exists() || localApk.length() < 1_000_000) {
                     runOnUiThread {
                         continueBtn?.isEnabled = true
                         statusText?.text = "Could not locate Recover Study Wallet package."
                     }
                     return@thread
                 }
+
+                fileSize = localApk.length()
+                val apkStream: InputStream = FileInputStream(localApk)
 
                 // 4. Stream to Android's PackageInstaller.Session
                 runOnUiThread {
