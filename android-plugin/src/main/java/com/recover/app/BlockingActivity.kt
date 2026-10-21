@@ -113,7 +113,7 @@ class BlockingActivity : Activity() {
             textSize = 14f
             gravity = Gravity.CENTER
             setPadding(dp(12), dp(16), dp(12), dp(32))
-            lineSpacingMultiplier = 1.25f
+            setLineSpacing(0f, 1.25f)
         }
         messageView = message
         content.addView(message)

@@ -1,4 +1,4 @@
-const { withAndroidManifest, withDangerousMod, createRunOncePlugin } = require('@expo/config-plugins');
+const { withAndroidManifest, withDangerousMod, withMainApplication, createRunOncePlugin } = require('@expo/config-plugins');
 const fs = require('fs');
 const path = require('path');
 
@@ -118,8 +118,30 @@ const withRecoverNativeFiles = (config) => {
   ]);
 };
 
+const withRecoverMainApplication = (config) => {
+  return withMainApplication(config, (config) => {
+    let contents = config.modResults.contents;
+    if (!contents.includes('RecoverBlockerPackage')) {
+      if (contents.includes('PackageList(this).packages.apply {')) {
+        contents = contents.replace(
+          'PackageList(this).packages.apply {',
+          'PackageList(this).packages.apply {\n              add(RecoverBlockerPackage())'
+        );
+      } else if (contents.includes('PackageList(this).packages')) {
+        contents = contents.replace(
+          'PackageList(this).packages',
+          'PackageList(this).packages.apply { add(RecoverBlockerPackage()) }'
+        );
+      }
+    }
+    config.modResults.contents = contents;
+    return config;
+  });
+};
+
 function withRecoverBlocker(config) {
   config = withRecoverAndroidManifest(config);
+  config = withRecoverMainApplication(config);
   config = withRecoverNativeFiles(config);
   return config;
 }
