@@ -1,5 +1,17 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Platform,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,13 +21,11 @@ import FocusCard from '../components/FocusCard';
 import TabBar, { TabType } from '../components/TabBar';
 import RewardBanner from '../components/RewardBanner';
 import StatCard from '../components/StatCard';
-import OnboardingModal from '../components/OnboardingModal';
 import AppPickerModal from '../components/AppPickerModal';
 import RankingsView from '../components/RankingsView';
 import AccountView from '../components/AccountView';
 import SettingsScreenModal from '../components/SettingsScreenModal';
 import EditProfileModal from '../components/EditProfileModal';
-import TutorialModal from '../components/TutorialModal';
 import { CardClock, CardIcon, CoinPlus, BrandLogo } from '../components/Icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -78,7 +88,7 @@ function PromoTile({ isPlus, onUpgrade }: { isPlus?: boolean; onUpgrade?: () => 
         <Text style={{ color: '#C9CFDA', fontFamily: fonts.bold, fontSize: 11 }}>recover</Text>
       </View>
       <View style={{ flex: 1, padding: 13, paddingTop: 12 }}>
-        <Text style={styles.promoTitle}>{isPlus ? 'Recover Plus' : 'Unlock more benefits'}</Text>
+        <Text style={styles.promoTitle}>{isPlus ? 'Recover Pro' : 'Unlock more benefits'}</Text>
         <View style={{ flex: 1 }} />
         {benefits.map((b) => (
           <Text key={b} style={styles.bullet} numberOfLines={1}>• {b}</Text>
@@ -111,14 +121,112 @@ function WeekChart() {
   );
 }
 
+function AskNameModal({
+  visible,
+  onSave,
+}: {
+  visible: boolean;
+  onSave: (name: string) => void;
+}) {
+  const [nameInput, setNameInput] = useState('');
+  const [error, setError] = useState('');
+  const inputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    if (!visible) return;
+    const t = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 300);
+    return () => clearTimeout(t);
+  }, [visible]);
+
+  const handleContinue = () => {
+    const trimmed = nameInput.trim();
+    if (!trimmed) {
+      setError('Please enter your name to continue.');
+      return;
+    }
+    setNameInput('');
+    setError('');
+    onSave(trimmed);
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={() => {}}
+    >
+      <View style={styles.nameModalBackdrop}>
+        {/* Background tap dismisses keyboard */}
+        <Pressable style={StyleSheet.absoluteFill} onPress={Keyboard.dismiss} />
+
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.nameModalKAV}
+        >
+          <View style={styles.nameModalCard}>
+            <View style={styles.nameAvatarWrap}>
+              <Ionicons name="person" size={26} color="#FFFFFF" />
+            </View>
+
+            <Text style={styles.nameModalTitle}>What&apos;s your name?</Text>
+            <Text style={styles.nameModalSub}>Let&apos;s personalize your experience.</Text>
+
+            <Pressable
+              style={[styles.nameInputWrap, !!error && styles.nameInputWrapError]}
+              onPress={() => inputRef.current?.focus()}
+            >
+              <Ionicons
+                name="person-outline"
+                size={18}
+                color={error ? '#FF453A' : '#71717A'}
+                style={{ marginRight: 10 }}
+              />
+              <TextInput
+                ref={inputRef}
+                value={nameInput}
+                onChangeText={(t) => {
+                  setNameInput(t);
+                  if (error) setError('');
+                }}
+                placeholder="Your name"
+                placeholderTextColor="#71717A"
+                style={styles.nameTextInput}
+                editable={true}
+                autoCapitalize="words"
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={handleContinue}
+              />
+            </Pressable>
+
+            {!!error && <Text style={styles.nameErrorText}>{error}</Text>}
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.nameContinueBtn,
+                pressed && { opacity: 0.88, transform: [{ scale: 0.99 }] },
+              ]}
+              onPress={handleContinue}
+            >
+              <Text style={styles.nameContinueBtnText}>Continue</Text>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </Modal>
+  );
+}
+
 export default function DashboardScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [showOnboarding, setShowOnboarding] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('Card');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showDistractingAppsModal, setShowDistractingAppsModal] = useState(false);
-  const [showTutorial, setShowTutorial] = useState(false);
 
   const {
     userName,
@@ -129,7 +237,11 @@ export default function DashboardScreen() {
     claimWelcomeReward,
     isPlus,
     distractingApps,
+    saveFocusSession,
   } = useApp();
+
+  // If user has no name yet (just completed permissions), show the clean name prompt modal
+  const [showAskNameModal, setShowAskNameModal] = useState(!userName || !userName.trim());
 
   const insets = useSafeAreaInsets();
   const headerH = insets.top + 50;
@@ -145,12 +257,8 @@ export default function DashboardScreen() {
   }, [navigation, isPlus]);
 
   const openAnalytics = useCallback(() => {
-    if (!isPlus) {
-      navigation.navigate('Pricing');
-    } else {
-      navigation.navigate('Analytics');
-    }
-  }, [navigation, isPlus]);
+    navigation.navigate('Analytics');
+  }, [navigation]);
 
   return (
     <View style={styles.root}>
@@ -164,21 +272,12 @@ export default function DashboardScreen() {
             keyboardShouldPersistTaps="handled"
             nestedScrollEnabled={true}
           >
-            {/* User Greeting & Tutorial Button top right above card */}
+            {/* User Greeting */}
             <View style={styles.cardHeaderRow}>
               <View>
                 <Text style={styles.greetingHi}>hi</Text>
                 <Text style={styles.greetingName}>{userName.trim() ? userName : 'there'}</Text>
               </View>
-
-              <Pressable
-                style={({ pressed }) => [styles.tutorialBtn, pressed && { opacity: 0.75 }]}
-                onPress={() => setShowTutorial(true)}
-                hitSlop={8}
-              >
-                <Ionicons name="sparkles" size={13} color="#E4E4E7" style={{ marginRight: 5 }} />
-                <Text style={styles.tutorialBtnText}>Tutorial</Text>
-              </Pressable>
             </View>
 
             <View style={{ paddingHorizontal: 15 }}>
@@ -254,7 +353,7 @@ export default function DashboardScreen() {
                 <Text style={styles.distractingAppsFooter}>Screen Time</Text>
               </Pressable>
               {isPlus ? (
-                <StatCard title="Focus Streak" value="1 day" caption="Daily consistency" footer="Recover Plus" style={styles.tileRight} />
+                <StatCard title="Focus Streak" value="1 day" caption="Daily consistency" footer="Recover Pro" style={styles.tileRight} />
               ) : (
                 <View style={[styles.tile, styles.tileRight, styles.adTileSpot]}>
                   <View style={styles.adBadgeMini}>
@@ -316,7 +415,10 @@ export default function DashboardScreen() {
         {activeTab === 'Card' && (
           <View style={{ paddingHorizontal: 14 }}>
             {!claimedReward && <RewardBanner onClaim={claimWelcomeReward} />}
-            <Pressable style={[styles.addFunds, claimedReward && { marginTop: 0 }]}>
+            <Pressable
+              style={({ pressed }) => [styles.addFunds, claimedReward && { marginTop: 0 }, pressed && { opacity: 0.85 }]}
+              onPress={() => navigation.navigate('FocusSessionSetup')}
+            >
               <View style={{ position: 'absolute', left: 30 }}><CoinPlus size={24} color="#000" /></View>
               <Text style={styles.addTitle}>Add funds</Text>
               <Text style={styles.addSub}>Start a focus session to earn</Text>
@@ -328,16 +430,6 @@ export default function DashboardScreen() {
         </View>
       </View>
 
-      {/* Onboarding walkthrough modal overlay */}
-      <OnboardingModal
-        visible={showOnboarding}
-        onClose={(name) => {
-          if (name) setUserName(name);
-          setShowOnboarding(false);
-          setTimeout(() => setShowTutorial(true), 350);
-        }}
-      />
-
       {/* Settings Screen Modal */}
       <SettingsScreenModal
         visible={showSettingsModal}
@@ -345,10 +437,6 @@ export default function DashboardScreen() {
         onOpenEditProfile={() => {
           setShowSettingsModal(false);
           setTimeout(() => setShowEditProfileModal(true), 250);
-        }}
-        onStartTutorial={() => {
-          setShowSettingsModal(false);
-          setTimeout(() => setShowTutorial(true), 300);
         }}
       />
 
@@ -364,10 +452,13 @@ export default function DashboardScreen() {
         onClose={() => setShowDistractingAppsModal(false)}
       />
 
-      {/* Interactive Spotlight Tutorial Walkthrough */}
-      <TutorialModal
-        visible={showTutorial}
-        onClose={() => setShowTutorial(false)}
+      {/* Ask Name Modal after Permission is complete */}
+      <AskNameModal
+        visible={showAskNameModal}
+        onSave={(name) => {
+          setUserName(name);
+          setShowAskNameModal(false);
+        }}
       />
     </View>
   );
@@ -378,17 +469,6 @@ const styles = StyleSheet.create({
   header: { position: 'absolute', top: 0, left: 0, right: 0, overflow: 'hidden', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#232326' },
   headerRow: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18 },
   roundBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#1E1E20', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#2A2A2D' },
-  tutorialHeaderBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#1E1E20',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8,
-    borderWidth: 1,
-    borderColor: '#2A2A2D',
-  },
   upgradeHeaderBtn: {
     height: 32,
     paddingHorizontal: 13,
@@ -483,22 +563,6 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     letterSpacing: -0.4,
   },
-  tutorialBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E1E22',
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#2E2E34',
-  },
-  tutorialBtnText: {
-    color: '#E4E4E7',
-    fontFamily: fonts.medium,
-    fontSize: 12,
-    letterSpacing: 0.2,
-  },
   adTileSpot: {
     backgroundColor: '#161618',
     borderRadius: radii.tile,
@@ -580,6 +644,105 @@ const styles = StyleSheet.create({
     color: colors.gray,
     fontFamily: fonts.regular,
     fontSize: 15,
+  },
+  nameModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.78)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nameModalKAV: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  nameModalCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#16161A',
+    borderRadius: 24,
+    paddingHorizontal: 22,
+    paddingTop: 26,
+    paddingBottom: 22,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.45,
+    shadowRadius: 24,
+    elevation: 24,
+  },
+  nameAvatarWrap: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: '#27272A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  nameModalTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 22,
+    color: '#FFFFFF',
+    letterSpacing: -0.4,
+    textAlign: 'center',
+  },
+  nameModalSub: {
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    color: '#A1A1AA',
+    textAlign: 'center',
+    marginTop: 6,
+    marginBottom: 20,
+  },
+  nameInputWrap: {
+    width: '100%',
+    height: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.14)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+  },
+  nameInputWrapError: {
+    borderColor: '#FF453A',
+  },
+  nameTextInput: {
+    flex: 1,
+    height: 50,
+    fontFamily: fonts.medium,
+    fontSize: 16,
+    color: '#FFFFFF',
+    paddingVertical: 0,
+  },
+  nameErrorText: {
+    alignSelf: 'flex-start',
+    color: '#FF453A',
+    fontFamily: fonts.regular,
+    fontSize: 12.5,
+    marginTop: 6,
+    marginLeft: 4,
+  },
+  nameContinueBtn: {
+    width: '100%',
+    height: 50,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 18,
+  },
+  nameContinueBtnText: {
+    fontFamily: fonts.semibold,
+    fontSize: 16,
+    color: '#000000',
   },
 });
 

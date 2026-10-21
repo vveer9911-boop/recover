@@ -20,7 +20,7 @@ import { useApp } from '../context/AppContext';
 import { AVATAR_PRESETS } from './EditProfileModal';
 import EditProfileModal from './EditProfileModal';
 import SettingsScreenModal from './SettingsScreenModal';
-import LegalNoticeModal from './LegalNoticeModal';
+import LegalNoticeModal, { LegalModalType } from './LegalNoticeModal';
 
 export default function AccountView() {
   const insets = useSafeAreaInsets();
@@ -34,12 +34,14 @@ export default function AccountView() {
     credits,
     isPlus,
     setIsPlus,
+    deleteAccount,
   } = useApp();
 
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [activeLegalType, setActiveLegalType] = useState<'terms' | 'privacy' | 'notices' | null>(null);
+  const [activeLegalType, setActiveLegalType] = useState<LegalModalType | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const displayName = userName.trim() ? userName : 'there';
   const displayHandle = userHandle.trim() ? `@${userHandle.replace(/^@/, '')}` : '@focus_champ';
@@ -123,7 +125,7 @@ export default function AccountView() {
             <Text style={styles.editProfileText}>Edit profile</Text>
           </Pressable>
 
-          {/* 2. Upgrade to Pro / Manage Plus Card */}
+          {/* 2. Upgrade to Pro / Manage Pro Card */}
           <View style={styles.planCardWrapper}>
             <Pressable
               style={({ pressed }) => [styles.upgradeCard, pressed && { opacity: 0.85 }]}
@@ -135,17 +137,17 @@ export default function AccountView() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.upgradeTitle}>
-                    {isPlus ? `${BRAND_NAME} Plus` : `Upgrade to ${BRAND_NAME} Plus`}
+                    {isPlus ? `${BRAND_NAME} Pro` : `Upgrade to ${BRAND_NAME} Pro`}
                   </Text>
                   <Text style={styles.upgradeSubtitle}>
-                    {isPlus ? 'Plus member • All features & cards unlocked' : 'Strict app blocker, ad-free & custom cards'}
+                    {isPlus ? 'Pro member • All features & cards unlocked' : 'Strict app blocker, ad-free & custom cards'}
                   </Text>
                 </View>
               </View>
               <Feather name="chevron-right" size={17} color="#52525B" />
             </Pressable>
 
-            {/* Little cancel subscription option for Plus users */}
+            {/* Little cancel subscription option for Pro users */}
             {isPlus && (
               <Pressable
                 style={({ pressed }) => [styles.cancelSubBtn, pressed && { opacity: 0.6 }]}
@@ -167,9 +169,9 @@ export default function AccountView() {
                 <Ionicons name="terminal-outline" size={18} color="#FFFFFF" />
               </View>
               <View style={{ flex: 1, marginRight: 10 }}>
-                <Text style={styles.devTitle}>Plus User Mode</Text>
+                <Text style={styles.devTitle}>Pro User Mode</Text>
                 <Text style={styles.devSubtitle}>
-                  {isPlus ? 'Enabled • Plus features & cards unlocked' : 'Toggle on to unlock all Plus features'}
+                  {isPlus ? 'Enabled • Pro features & cards unlocked' : 'Toggle on to unlock all Pro features'}
                 </Text>
               </View>
               <Switch
@@ -192,7 +194,7 @@ export default function AccountView() {
               <View style={styles.adContent}>
                 <Ionicons name="megaphone-outline" size={20} color="#52525B" style={{ marginBottom: 5 }} />
                 <Text style={styles.adMainTitle}>Open space reserved for ads</Text>
-                <Text style={styles.adSubTitle}>Ad placement area • Ad-free with Plus</Text>
+                <Text style={styles.adSubTitle}>Ad placement area • Ad-free with Pro</Text>
               </View>
             </View>
           </View>
@@ -203,6 +205,17 @@ export default function AccountView() {
           <Text style={styles.legalHeader}>LEGAL & POLICIES</Text>
 
           <View style={styles.legalCard}>
+            {/* Option 0: FAQ & How it works */}
+            <Pressable
+              style={({ pressed }) => [styles.legalRow, pressed && { opacity: 0.7 }]}
+              onPress={() => setActiveLegalType('faq')}
+            >
+              <Text style={styles.legalRowTitle}>FAQ & How it works</Text>
+              <Feather name="chevron-right" size={15} color="#52525B" />
+            </Pressable>
+
+            <View style={styles.legalDivider} />
+
             {/* Option 1: Terms & Conditions */}
             <Pressable
               style={({ pressed }) => [styles.legalRow, pressed && { opacity: 0.7 }]}
@@ -234,6 +247,18 @@ export default function AccountView() {
               <Feather name="chevron-right" size={15} color="#52525B" />
             </Pressable>
           </View>
+        </View>
+
+        {/* ACCOUNT ACTIONS / DANGER ZONE */}
+        <View style={styles.dangerSection}>
+          <Pressable
+            style={({ pressed }) => [styles.deleteAccountBtn, pressed && { opacity: 0.7 }]}
+            onPress={() => setShowDeleteModal(true)}
+            hitSlop={12}
+          >
+            <Ionicons name="trash-outline" size={15} color="#EF4444" style={{ marginRight: 6 }} />
+            <Text style={styles.deleteAccountText}>Delete Account</Text>
+          </Pressable>
         </View>
       </ScrollView>
 
@@ -275,7 +300,7 @@ export default function AccountView() {
             <View style={styles.alertBody}>
               <Text style={styles.alertTitle}>Cancel Subscription</Text>
               <Text style={styles.alertMessage}>
-                Are you sure you want to cancel your {BRAND_NAME} Plus subscription? Pro features and custom cards will be locked.
+                Are you sure you want to cancel your {BRAND_NAME} Pro subscription? Pro features and custom cards will be locked.
               </Text>
             </View>
             <View style={styles.alertButtons}>
@@ -293,6 +318,53 @@ export default function AccountView() {
                 }}
               >
                 <Text style={styles.alertBtnTextDestructive}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Apple-style Permission Dialog for Delete Account (Centered Modal) */}
+      <Modal
+        visible={showDeleteModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowDeleteModal(false)}
+      >
+        <View style={styles.dialogBackdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowDeleteModal(false)} />
+          <View style={styles.systemAlert}>
+            <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFill} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(30,30,34,0.96)' }]} />
+            <View style={styles.alertBody}>
+              <Text style={styles.alertTitle}>Delete Account</Text>
+              <Text style={styles.alertMessage}>
+                All your data will be permanently deleted from the database.
+              </Text>
+            </View>
+            <View style={styles.alertButtons}>
+              <Pressable
+                style={styles.alertBtn}
+                onPress={() => setShowDeleteModal(false)}
+              >
+                <Text style={styles.alertBtnTextNormal}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.alertBtn, styles.alertBtnBorderLeft]}
+                onPress={async () => {
+                  setShowDeleteModal(false);
+                  await deleteAccount();
+                  try {
+                    navigation.reset({
+                      index: 0,
+                      routes: [{ name: 'HowItWorks' }],
+                    });
+                  } catch (e) {
+                    navigation.navigate('HowItWorks');
+                  }
+                }}
+              >
+                <Text style={styles.alertBtnTextDestructive}>Delete</Text>
               </Pressable>
             </View>
           </View>
@@ -559,6 +631,28 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     lineHeight: 15,
   },
+  devDivider: {
+    height: 1,
+    backgroundColor: '#242428',
+    marginTop: 12,
+  },
+  devMiniBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1C1C20',
+    paddingVertical: 7,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2A2A2E',
+  },
+  devMiniBtnText: {
+    color: '#FFFFFF',
+    fontFamily: fonts.semibold,
+    fontSize: 11,
+  },
   upgradeCardLeft: {
     flex: 1,
     flexDirection: 'row',
@@ -665,6 +759,28 @@ const styles = StyleSheet.create({
   legalDivider: {
     height: 1,
     backgroundColor: '#1C1C20',
+  },
+  dangerSection: {
+    marginTop: 18,
+    marginBottom: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteAccountBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.22)',
+  },
+  deleteAccountText: {
+    color: '#EF4444',
+    fontFamily: fonts.medium,
+    fontSize: 13,
   },
   // Apple-Style Alert Dialog
   dialogBackdrop: {

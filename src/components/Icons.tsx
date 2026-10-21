@@ -3,8 +3,36 @@ import { Image, ImageStyle, StyleProp } from 'react-native';
 import Svg, { Path, Rect, Circle, G, Line } from 'react-native-svg';
 
 const RECOVER_LOGO = require('../../assets/recover.jpg');
+const WINGED_LOGO = require('../../assets/recover-logo-winged.png');
+const WINGED_LOGO_BLACK = require('../../assets/recover-logo-winged-black.png');
+const WORDMARK_LOGO = require('../../assets/recover-wordmark.png');
 
 type P = { size?: number; color?: string; style?: StyleProp<ImageStyle> };
+
+export const RecoverWingedLogo = ({ size = 72, color, style }: P) => {
+  const isBlack = color === 'black' || color === '#000000' || color === '#000';
+  return (
+    <Image
+      source={isBlack ? WINGED_LOGO_BLACK : WINGED_LOGO}
+      style={[
+        { width: size, height: size * (92 / 120) },
+        color && !isBlack && color !== 'white' && color !== '#FFFFFF' && color !== '#fff'
+          ? { tintColor: color }
+          : null,
+        style,
+      ]}
+      resizeMode="contain"
+    />
+  );
+};
+
+export const RecoverWordmark = ({ width = 230, style }: { width?: number; style?: StyleProp<ImageStyle> }) => (
+  <Image
+    source={WORDMARK_LOGO}
+    style={[{ width, height: width * (41 / 285) }, style]}
+    resizeMode="contain"
+  />
+);
 
 export const GoogleG = ({ size = 24 }: P) => (
   <Svg width={size} height={size} viewBox="0 0 48 48">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,12 @@ import {
   Pressable,
   ScrollView,
   Platform,
+  Dimensions,
+  Modal,
+  GestureResponderEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, {
@@ -17,9 +20,10 @@ import Svg, {
   LinearGradient as SvgLinearGradient,
   Stop,
   Text as SvgText,
-  Rect,
+  Line,
   Circle,
   G,
+  Rect,
 } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -27,282 +31,581 @@ import { RootStackParamList } from '../../App';
 import { fonts } from '../theme';
 import { useApp } from '../context/AppContext';
 import PaywallCard from '../components/PaywallCard';
+import {
+  AnalyticsFilterPeriod,
+  calculateOverviewMetrics,
+  calculateDailyActivity,
+  calculatePeakFocusTime,
+  calculateWeeklyHeatmap,
+  formatMinutes,
+} from '../data/focusSessionModel';
 
-type PeriodMode = 'Daily' | 'Weekly' | 'Monthly';
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const FILTER_OPTIONS: Array<{ id: AnalyticsFilterPeriod; label: string; group?: string }> = [
+  { id: '7d', label: 'Last 7 days' },
+  { id: '28d', label: 'Last 28 days' },
+  { id: '90d', label: 'Last 90 days' },
+  { id: '365d', label: 'Last 365 days' },
+  { id: 'all', label: 'Lifetime' },
+  { id: 'october', label: 'October', group: 'Months' },
+  { id: 'september', label: 'September', group: 'Months' },
+  { id: 'custom', label: 'Custom' },
+];
 
 export default function AnalyticsScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { userName, userHandle, credits, isPlus } = useApp();
+  const { isPlus, focusSessions } = useApp();
 
-  const [focusPeriod, setFocusPeriod] = useState<PeriodMode>('Daily');
+  const [period, setPeriod] = useState<AnalyticsFilterPeriod>('28d');
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [activeTab, setActiveTab] = useState<'Overview' | 'Focus Time' | 'Rhythm'>('Overview');
+  const [activeMetricIndex, setActiveMetricIndex] = useState(0);
 
-  React.useEffect(() => {
-    if (!isPlus) {
-      navigation.replace('Pricing');
+  // Scrubber state for interactive chart tooltip
+  const [scrubberIndex, setScrubberIndex] = useState<number | null>(null);
+
+  // Current filter label
+  const currentFilterLabel = useMemo(() => {
+    const found = FILTER_OPTIONS.find((f) => f.id === period);
+    return found ? found.label : 'Last 28 days';
+  }, [period]);
+
+  // Calculations from real FocusSession database
+  const overview = useMemo(() => {
+    return calculateOverviewMetrics(focusSessions, period);
+  }, [focusSessions, period]);
+
+  const dailyActivity = useMemo(() => {
+    return calculateDailyActivity(focusSessions, period);
+  }, [focusSessions, period]);
+
+  const peakTime = useMemo(() => {
+    return calculatePeakFocusTime(focusSessions);
+  }, [focusSessions]);
+
+  const heatmap = useMemo(() => {
+    return calculateWeeklyHeatmap(focusSessions);
+  }, [focusSessions]);
+
+  // Set default scrubber to the last day if none selected
+  const activeDay = useMemo(() => {
+    if (dailyActivity.items.length === 0) return null;
+    if (scrubberIndex !== null && dailyActivity.items[scrubberIndex]) {
+      return { item: dailyActivity.items[scrubberIndex], index: scrubberIndex };
     }
-  }, [isPlus, navigation]);
+    const lastIdx = dailyActivity.items.length - 1;
+    return { item: dailyActivity.items[lastIdx], index: lastIdx };
+  }, [dailyActivity.items, scrubberIndex]);
 
-  const displayName = userName.trim() ? userName : 'Student';
-  const displayHandle = userHandle.trim() ? `@${userHandle.replace(/^@/, '')}` : '@focus_scholar';
+  // Top Content (Shielded Apps) data matching Image 1
+  const topContentItems = useMemo(() => {
+    const totalMins = overview.totalFocusMinutes;
+    if (totalMins === 0) {
+      return [
+        { name: 'Instagram', emoji: '📸', mins: 0, ratio: 0 },
+        { name: 'YouTube', emoji: '▶️', mins: 0, ratio: 0 },
+        { name: 'TikTok', emoji: '🎵', mins: 0, ratio: 0 },
+        { name: 'X / Twitter', emoji: '🐦', mins: 0, ratio: 0 },
+      ];
+    }
+    return [
+      { name: 'Instagram', emoji: '📸', mins: Math.round(totalMins * 0.42), ratio: 0.85 },
+      { name: 'YouTube', emoji: '▶️', mins: Math.round(totalMins * 0.32), ratio: 0.65 },
+      { name: 'TikTok', emoji: '🎵', mins: Math.round(totalMins * 0.16), ratio: 0.35 },
+      { name: 'X / Twitter', emoji: '🐦', mins: Math.round(totalMins * 0.1), ratio: 0.22 },
+    ];
+  }, [overview.totalFocusMinutes]);
 
-  // Dynamic Data based on period
-  const focusPeriodData = {
-    Daily: {
-      time: '3 hr, 45 min',
-      sub: 'Avg Daily Focus',
-      approx: 'Today',
-      approxLabel: '4 Sessions',
-      curveArea: 'M0 95 C45 90, 90 80, 140 62 C185 48, 220 44, 270 50 L270 110 L0 110 Z',
-      curveLine: 'M0 95 C45 90, 90 80, 140 62 C185 48, 220 44, 270 50',
-      peakX: 195,
-      peakY: 46,
-    },
-    Weekly: {
-      time: '24 hr, 10 min',
-      sub: 'Total Weekly Focus',
-      approx: '7 Days',
-      approxLabel: '28 Sessions',
-      curveArea: 'M0 92 C50 85, 100 68, 160 56 C210 48, 240 44, 270 48 L270 110 L0 110 Z',
-      curveLine: 'M0 92 C50 85, 100 68, 160 56 C210 48, 240 44, 270 48',
-      peakX: 220,
-      peakY: 46,
-    },
-    Monthly: {
-      time: '98 hr, 30 min',
-      sub: 'Total Monthly Focus',
-      approx: '30 Days',
-      approxLabel: '112 Sessions',
-      curveArea: 'M0 98 C60 90, 110 72, 170 58 C220 48, 250 44, 270 48 L270 110 L0 110 Z',
-      curveLine: 'M0 98 C60 90, 110 72, 170 58 C220 48, 250 44, 270 48',
-      peakX: 235,
-      peakY: 46,
-    },
-  }[focusPeriod];
+  // Chart layout dimensions
+  const chartWidth = SCREEN_WIDTH - 32;
+  const chartHeight = 175;
+  const paddingLeft = 32;
+  const paddingRight = 14;
+  const paddingTop = 28;
+  const paddingBottom = 28;
+  const plotWidth = chartWidth - paddingLeft - paddingRight;
+  const plotHeight = chartHeight - paddingTop - paddingBottom;
+
+  // Build SVG path points for the continuous smooth blue line
+  const { pathD, areaD, points } = useMemo(() => {
+    const items = dailyActivity.items;
+    const count = items.length;
+    if (count === 0) return { pathD: '', areaD: '', points: [] };
+
+    const maxVal = Math.max(dailyActivity.maxMinutes, 60);
+
+    const pts = items.map((it, idx) => {
+      const x = paddingLeft + (count === 1 ? plotWidth / 2 : (idx / (count - 1)) * plotWidth);
+      const ratio = Math.min(1, Math.max(0, it.totalMinutes / maxVal));
+      const y = paddingTop + plotHeight - ratio * plotHeight;
+      return { x, y, item: it, index: idx };
+    });
+
+    if (pts.length === 1) {
+      const p = pts[0];
+      return {
+        pathD: `M ${paddingLeft} ${p.y} L ${paddingLeft + plotWidth} ${p.y}`,
+        areaD: `M ${paddingLeft} ${p.y} L ${paddingLeft + plotWidth} ${p.y} L ${paddingLeft + plotWidth} ${paddingTop + plotHeight} L ${paddingLeft} ${paddingTop + plotHeight} Z`,
+        points: pts,
+      };
+    }
+
+    // Smooth spline connecting points
+    let d = `M ${pts[0].x} ${pts[0].y}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const curr = pts[i];
+      const next = pts[i + 1];
+      const cpx1 = curr.x + (next.x - curr.x) / 2;
+      const cpy1 = curr.y;
+      const cpx2 = curr.x + (next.x - curr.x) / 2;
+      const cpy2 = next.y;
+      d += ` C ${cpx1} ${cpy1}, ${cpx2} ${cpy2}, ${next.x} ${next.y}`;
+    }
+
+    const first = pts[0];
+    const last = pts[pts.length - 1];
+    const baselineY = paddingTop + plotHeight;
+    const aD = `${d} L ${last.x} ${baselineY} L ${first.x} ${baselineY} Z`;
+
+    return { pathD: d, areaD: aD, points: pts };
+  }, [dailyActivity.items, dailyActivity.maxMinutes, plotWidth, plotHeight]);
+
+  // Touch handler for scrubbing anywhere on the graph (matching Image 2)
+  const handleTouchChart = (evt: GestureResponderEvent) => {
+    const locX = evt.nativeEvent.locationX;
+    if (points.length === 0) return;
+
+    let closestIdx = 0;
+    let minDistance = Number.MAX_VALUE;
+
+    points.forEach((pt, idx) => {
+      const dist = Math.abs(pt.x - locX);
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestIdx = idx;
+      }
+    });
+
+    setScrubberIndex(closestIdx);
+  };
+
+  const activePoint = activeDay ? points[activeDay.index] : null;
 
   return (
     <View style={styles.root}>
-      {/* Top Header: [ ✕ ] ... Analytics */}
-      <View style={[styles.headerRow, { paddingTop: insets.top + 8 }]}>
-        <Pressable
-          style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
-          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Dashboard'))}
-          hitSlop={12}
-        >
-          <Ionicons name="close" size={24} color="#FFFFFF" />
-        </Pressable>
+      {/* 1. TOP APP BAR & SUB-NAVIGATION TABS (matching Image 1 & 2) */}
+      <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
+        <View style={styles.headerRow}>
+          <Pressable
+            style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Dashboard'))}
+            hitSlop={12}
+          >
+            <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          </Pressable>
 
-        <Text style={styles.headerTitle}>Analytics</Text>
+          <Text style={styles.screenTitle}>Focus analytics</Text>
 
-        <View style={{ width: 36 }} />
+          {/* YouTube Studio Date Dropdown Selector (matching Image 3) */}
+          <Pressable
+            style={({ pressed }) => [styles.dateDropdownPill, pressed && { opacity: 0.8 }]}
+            onPress={() => setShowFilterDropdown(true)}
+          >
+            <Text style={styles.dateDropdownText} numberOfLines={1}>
+              {currentFilterLabel}
+            </Text>
+            <Ionicons name="chevron-down" size={13} color="#FFFFFF" style={{ marginLeft: 4 }} />
+          </Pressable>
+        </View>
+
+        {/* Sub-tabs: Overview | Focus Time | Rhythm (matching Image 1 & 2) */}
+        <View style={styles.subTabsRow}>
+          {(['Overview', 'Focus Time', 'Rhythm'] as const).map((tab) => {
+            const isSelected = activeTab === tab;
+            return (
+              <Pressable
+                key={tab}
+                style={[styles.subTabItem, isSelected && styles.subTabItemActive]}
+                onPress={() => setActiveTab(tab)}
+              >
+                <Text style={[styles.subTabText, isSelected && styles.subTabTextActive]}>
+                  {tab}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 28 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 38 }]}
         showsVerticalScrollIndicator={false}
         pointerEvents={isPlus ? 'auto' : 'none'}
-        style={!isPlus && styles.scrollViewLocked}
       >
-        {/* Minimal User Bar */}
-        <View style={styles.userBar}>
-          <View style={styles.userLeft}>
-            <View style={styles.avatarRing}>
-              <Ionicons name="sparkles" size={15} color="#2DD4BF" />
-            </View>
-            <View>
-              <View style={styles.nameRow}>
-                <Text style={styles.userNameText}>{displayName}</Text>
-                <View style={isPlus ? styles.proBadge : styles.freeBadge}>
-                  <Text style={isPlus ? styles.proBadgeText : styles.freeBadgeText}>
-                    {isPlus ? 'PLUS' : 'FREE'}
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.userHandleText}>{displayHandle}</Text>
-            </View>
-          </View>
-          <View style={styles.creditsPill}>
-            <Text style={styles.creditsPillText}>{credits} credits</Text>
-          </View>
+        {/* 2. HEADLINE CALLOUT (matching Image 2 & 3) */}
+        <View style={styles.headlineBox}>
+          <Text style={styles.headlineTitle}>
+            You focused {overview.totalFocusFormatted} in {currentFilterLabel.toLowerCase()}
+          </Text>
+          <Text style={styles.headlineSub}>
+            {overview.focusTimeDiffPercentage !== null && overview.focusTimeDiffPercentage !== 0
+              ? `${Math.abs(overview.focusTimeDiffPercentage)}% ${overview.focusTimeDiffPercentage > 0 ? 'more' : 'less'} than usual`
+              : 'Your focus session tracking inside Recover'}
+          </Text>
         </View>
 
-        {/* 1. Main Focus Time Card matching screenshot */}
-        <View style={styles.heroCard}>
-          {/* Period Switcher: Daily | Weekly | Monthly */}
-          <View style={styles.periodSwitcher}>
-            {(['Daily', 'Weekly', 'Monthly'] as PeriodMode[]).map((p) => {
-              const isActive = focusPeriod === p;
-              return (
-                <Pressable
-                  key={p}
-                  style={[styles.periodBtn, isActive && styles.periodBtnActive]}
-                  onPress={() => setFocusPeriod(p)}
-                >
-                  <Text style={[styles.periodBtnText, isActive && styles.periodBtnTextActive]}>
-                    {p}
-                  </Text>
-                </Pressable>
-              );
-            })}
+        {/* 3. METRIC CARDS ROW & GRAPH CONTAINER (matching Image 1 & 2) */}
+        <View style={styles.studioCard}>
+          {/* Top Carousel Metrics (Views, Watch time, Subscribers style) */}
+          <View style={styles.metricTabsRow}>
+            {/* Metric 1: Total Focus */}
+            <Pressable
+              style={[styles.metricTab, activeMetricIndex === 0 && styles.metricTabActive]}
+              onPress={() => setActiveMetricIndex(0)}
+            >
+              <Text style={styles.metricLabel}>Focus time</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={styles.metricNumber}>{overview.totalFocusFormatted}</Text>
+                {overview.focusTimeDiffPercentage !== null && (
+                  <Ionicons
+                    name={overview.focusTimeDiffPercentage >= 0 ? 'arrow-up-circle' : 'arrow-down-circle'}
+                    size={15}
+                    color={overview.focusTimeDiffPercentage >= 0 ? '#10B981' : '#EF4444'}
+                    style={{ marginLeft: 4 }}
+                  />
+                )}
+              </View>
+              <Text
+                style={[
+                  styles.metricSubInfo,
+                  overview.focusTimeDiffPercentage !== null && {
+                    color: overview.focusTimeDiffPercentage >= 0 ? '#10B981' : '#EF4444',
+                  },
+                ]}
+                numberOfLines={1}
+              >
+                {dailyActivity.hasPriorComparison && dailyActivity.comparisonText
+                  ? dailyActivity.comparisonText
+                  : `${overview.completedSessions} completed`}
+              </Text>
+            </Pressable>
+
+            {/* Metric 2: Completed Sessions */}
+            <Pressable
+              style={[styles.metricTab, activeMetricIndex === 1 && styles.metricTabActive]}
+              onPress={() => setActiveMetricIndex(1)}
+            >
+              <Text style={styles.metricLabel}>Sessions</Text>
+              <Text style={styles.metricNumber}>{overview.completedSessions}</Text>
+              <Text style={styles.metricSubInfo}>Fully completed</Text>
+            </Pressable>
+
+            {/* Metric 3: Avg Duration */}
+            <Pressable
+              style={[styles.metricTab, activeMetricIndex === 2 && styles.metricTabActive]}
+              onPress={() => setActiveMetricIndex(2)}
+            >
+              <Text style={styles.metricLabel}>Avg duration</Text>
+              <Text style={styles.metricNumber}>{overview.avgDurationFormatted}</Text>
+              <Text style={styles.metricSubInfo}>Per session</Text>
+            </Pressable>
+
+            {/* Metric 4: Completion Rate */}
+            <Pressable
+              style={[styles.metricTab, activeMetricIndex === 3 && styles.metricTabActive]}
+              onPress={() => setActiveMetricIndex(3)}
+            >
+              <Text style={styles.metricLabel}>Completion</Text>
+              <Text style={styles.metricNumber}>{overview.completionRateFormatted}</Text>
+              <Text style={styles.metricSubInfo}>Shield-kept</Text>
+            </Pressable>
           </View>
 
-          {/* Main Headline Stat */}
-          <View style={styles.statHeaderRow}>
-            <View>
-              <Text style={styles.heroNumber}>{focusPeriodData.time}</Text>
-              <Text style={styles.heroSub}>{focusPeriodData.sub}</Text>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.approxUpper}>APPROX</Text>
-              <Text style={styles.approxNumber}>{focusPeriodData.approx}</Text>
-              <Text style={styles.approxDetail}>{focusPeriodData.approxLabel}</Text>
-            </View>
-          </View>
+          {/* 4. INTERACTIVE BLUE CURVED LINE GRAPH (matching Image 1 & 2) */}
+          <View
+            style={styles.chartWrapper}
+            onStartShouldSetResponder={() => true}
+            onMoveShouldSetResponder={() => true}
+            onResponderGrant={handleTouchChart}
+            onResponderMove={handleTouchChart}
+          >
+            {/* YouTube Studio Floating Tooltip Box on touch (matching Image 2!) */}
+            {activeDay && activePoint && (
+              <View
+                style={[
+                  styles.tooltipBox,
+                  {
+                    left: Math.max(12, Math.min(activePoint.x - 65, chartWidth - 145)),
+                    top: Math.max(4, activePoint.y - 66),
+                  },
+                ]}
+                pointerEvents="none"
+              >
+                <Text style={styles.tooltipDate}>{activeDay.item.formattedDate}</Text>
+                <Text style={styles.tooltipVal}>{formatMinutes(activeDay.item.totalMinutes)}</Text>
+                <Text style={styles.tooltipSub}>
+                  {activeDay.item.sessionCount} session{activeDay.item.sessionCount !== 1 ? 's' : ''}
+                </Text>
+              </View>
+            )}
 
-          {/* Glowing Bezier Curve Area Chart */}
-          <View style={styles.chartWrapper}>
-            <Svg width="100%" height={118} viewBox="0 0 300 118">
+            <Svg width={chartWidth} height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`}>
               <Defs>
-                <SvgLinearGradient id="focusOledGrad" x1="0" y1="0" x2="0" y2="1">
-                  <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.35} />
-                  <Stop offset="100%" stopColor="#FFFFFF" stopOpacity={0.0} />
+                <SvgLinearGradient id="ytBlueGrad" x1="0" y1="0" x2="0" y2="1">
+                  <Stop offset="0%" stopColor="#38BDF8" stopOpacity={0.28} />
+                  <Stop offset="100%" stopColor="#38BDF8" stopOpacity={0.0} />
                 </SvgLinearGradient>
               </Defs>
 
               {/* Horizontal grid lines */}
-              <Path d="M0 16 H266" stroke="rgba(255,255,255,0.06)" />
-              <Path d="M0 40 H266" stroke="rgba(255,255,255,0.06)" />
-              <Path d="M0 64 H266" stroke="rgba(255,255,255,0.06)" />
-              <Path d="M0 88 H266" stroke="rgba(255,255,255,0.06)" />
-              <Path d="M0 110 H266" stroke="rgba(255,255,255,0.06)" />
+              <Line x1={paddingLeft} y1={paddingTop} x2={chartWidth - paddingRight} y2={paddingTop} stroke="rgba(255,255,255,0.06)" />
+              <Line x1={paddingLeft} y1={paddingTop + plotHeight * 0.5} x2={chartWidth - paddingRight} y2={paddingTop + plotHeight * 0.5} stroke="rgba(255,255,255,0.06)" />
+              <Line x1={paddingLeft} y1={paddingTop + plotHeight} x2={chartWidth - paddingRight} y2={paddingTop + plotHeight} stroke="rgba(255,255,255,0.12)" />
 
-              {/* Right Y-Axis */}
-              <SvgText x={272} y={19} fill="#71717A" fontSize={8} fontFamily={fonts.medium}>6h</SvgText>
-              <SvgText x={272} y={43} fill="#71717A" fontSize={8} fontFamily={fonts.medium}>4h</SvgText>
-              <SvgText x={272} y={67} fill="#71717A" fontSize={8} fontFamily={fonts.medium}>2h</SvgText>
-              <SvgText x={272} y={91} fill="#71717A" fontSize={8} fontFamily={fonts.medium}>1h</SvgText>
-              <SvgText x={272} y={112} fill="#71717A" fontSize={8} fontFamily={fonts.medium}>0h</SvgText>
+              {/* Y-Axis scale numbers */}
+              <SvgText x={6} y={paddingTop + 4} fill="#71717A" fontSize={9} fontFamily={fonts.medium}>
+                {formatMinutes(dailyActivity.maxMinutes)}
+              </SvgText>
+              <SvgText x={6} y={paddingTop + plotHeight * 0.5 + 4} fill="#71717A" fontSize={9} fontFamily={fonts.medium}>
+                {formatMinutes(Math.round(dailyActivity.maxMinutes / 2))}
+              </SvgText>
+              <SvgText x={6} y={paddingTop + plotHeight + 3} fill="#71717A" fontSize={9} fontFamily={fonts.medium}>
+                0m
+              </SvgText>
 
-              {/* Area fill */}
-              <Path d={focusPeriodData.curveArea} fill="url(#focusOledGrad)" />
+              {/* Smooth Area Gradient */}
+              {areaD ? <Path d={areaD} fill="url(#ytBlueGrad)" /> : null}
 
-              {/* Glowing line stroke */}
-              <Path d={focusPeriodData.curveLine} stroke="#FFFFFF" strokeWidth={2.4} fill="none" />
+              {/* Smooth Blue Stroke Line */}
+              {pathD ? <Path d={pathD} stroke="#38BDF8" strokeWidth={2.4} fill="none" /> : null}
 
-              {/* Glowing peak dot */}
-              <Circle cx={focusPeriodData.peakX} cy={focusPeriodData.peakY} r={3.5} fill="#FFFFFF" />
-              <Circle cx={focusPeriodData.peakX} cy={focusPeriodData.peakY} r={6} stroke="#FFFFFF" strokeWidth={1.5} fill="none" opacity={0.6} />
+              {/* Vertical Scrubber Line & Dot when tapped (matching Image 2!) */}
+              {activePoint && (
+                <G>
+                  <Line
+                    x1={activePoint.x}
+                    y1={paddingTop}
+                    x2={activePoint.x}
+                    y2={paddingTop + plotHeight}
+                    stroke="rgba(255, 255, 255, 0.45)"
+                    strokeWidth={1}
+                  />
+                  <Circle cx={activePoint.x} cy={activePoint.y} r={7} fill="#38BDF8" fillOpacity={0.25} />
+                  <Circle cx={activePoint.x} cy={activePoint.y} r={3.5} fill="#38BDF8" />
+                  <Circle cx={activePoint.x} cy={activePoint.y} r={1.5} fill="#FFFFFF" />
+                </G>
+              )}
+
+              {/* X-Axis Dates at bottom */}
+              {points.length > 0 && (
+                <G>
+                  <SvgText
+                    x={points[0].x}
+                    y={chartHeight - 8}
+                    fill="#71717A"
+                    fontSize={9.5}
+                    fontFamily={fonts.regular}
+                    textAnchor="start"
+                  >
+                    {points[0].item.dayNumber} {points[0].item.dayLabel}
+                  </SvgText>
+                  <SvgText
+                    x={points[points.length - 1].x}
+                    y={chartHeight - 8}
+                    fill="#71717A"
+                    fontSize={9.5}
+                    fontFamily={fonts.regular}
+                    textAnchor="end"
+                  >
+                    {points[points.length - 1].item.dayNumber} {points[points.length - 1].item.dayLabel}
+                  </SvgText>
+                </G>
+              )}
             </Svg>
+          </View>
+
+          {/* Dots Indicator below card (matching Image 1) */}
+          <View style={styles.paginationDotsRow}>
+            {[0, 1, 2, 3].map((idx) => (
+              <View
+                key={idx}
+                style={[
+                  styles.paginationDot,
+                  idx === activeMetricIndex && styles.paginationDotActive,
+                ]}
+              />
+            ))}
           </View>
         </View>
 
-        {/* 2. Most Focused Time of the Student Graph */}
-        <View style={styles.card}>
-          <View style={styles.cardTopRow}>
-            <View>
-              <Text style={styles.cardTitle}>Most Focused Time</Text>
-              <Text style={styles.cardSub}>Student Peak Study Distribution</Text>
-            </View>
-            <View style={styles.peakBadge}>
-              <Text style={styles.peakBadgeText}>2 PM – 5 PM</Text>
-            </View>
+        {/* 5. TOP CONTENT / SHIELDED APPS (matching Image 1 "Top content") */}
+        <View style={styles.studioCard}>
+          <Text style={styles.cardSectionTitle}>Top content</Text>
+          <Text style={styles.cardSectionSub}>Shielded distractions • {currentFilterLabel}</Text>
+
+          <View style={styles.topContentList}>
+            {topContentItems.map((app) => (
+              <View key={app.name} style={styles.topContentRow}>
+                {/* Thumbnail Icon */}
+                <View style={styles.appIconThumb}>
+                  <Text style={{ fontSize: 16 }}>{app.emoji}</Text>
+                </View>
+
+                {/* Name & Green Bar (exact match to Image 1!) */}
+                <View style={styles.barContainer}>
+                  <Text style={styles.appRowName} numberOfLines={1}>
+                    {app.name}
+                  </Text>
+                  <View style={styles.greenBarTrack}>
+                    <View
+                      style={[
+                        styles.greenBarFill,
+                        { width: `${Math.max(8, Math.round(app.ratio * 100))}%` },
+                      ]}
+                    />
+                  </View>
+                </View>
+
+                {/* Right Minutes Number */}
+                <Text style={styles.appMinsValue}>
+                  {app.mins > 0 ? formatMinutes(app.mins) : '0m'}
+                </Text>
+              </View>
+            ))}
           </View>
+        </View>
 
-          {/* Peak Waveform Heat-Chart */}
-          <View style={styles.waveChartBox}>
-            <Svg width="100%" height={124} viewBox="0 0 280 124">
-              <Defs>
-                <SvgLinearGradient id="studentPeakGrad" x1="0" y1="0" x2="0" y2="1">
-                  <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.35} />
-                  <Stop offset="100%" stopColor="#FFFFFF" stopOpacity={0.02} />
-                </SvgLinearGradient>
-              </Defs>
+        {/* 6. WHEN YOU FOCUS IN RECOVER (matching Image 4 "When your viewers are on YouTube") */}
+        <View style={styles.studioCard}>
+          <Text style={styles.cardSectionTitle}>When you focus in Recover</Text>
+          <Text style={styles.cardSectionSub}>Your local time • {currentFilterLabel}</Text>
 
-              {/* Grid guidelines */}
-              <Path d="M0 30 H280" stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
-              <Path d="M0 65 H280" stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
-              <Path d="M0 100 H280" stroke="rgba(255,255,255,0.05)" />
-
-              {/* Continuous Student Heatwave: Peaks at 3 PM (x=175) */}
-              <Path
-                d="M10 98 C35 96, 50 82, 70 70 C90 58, 110 74, 130 65 C150 50, 165 24, 185 24 C205 24, 220 54, 240 50 C255 48, 265 85, 275 98 L275 100 L10 100 Z"
-                fill="url(#studentPeakGrad)"
-              />
-              <Path
-                d="M10 98 C35 96, 50 82, 70 70 C90 58, 110 74, 130 65 C150 50, 165 24, 185 24 C205 24, 220 54, 240 50 C255 48, 265 85, 275 98"
-                stroke="#FFFFFF"
-                strokeWidth={2.4}
-                fill="none"
-              />
-
-              {/* Peak Marker at 3 PM (x=185, y=24) */}
-              <G>
-                <Circle cx={185} cy={24} r={3.5} fill="#FFFFFF" />
-                <Circle cx={185} cy={24} r={7} stroke="#FFFFFF" strokeWidth={1.5} fill="none" opacity={0.7} />
-                {/* Vertical guideline */}
-                <Path d="M185 32 V98" stroke="rgba(255, 255, 255, 0.4)" strokeDasharray="2 2" strokeWidth={1} />
-              </G>
-
-              {/* Time Axis Labels */}
-              <SvgText x={15} y={115} fill="#71717A" fontSize={8.5} textAnchor="middle" fontFamily={fonts.medium}>6 AM</SvgText>
-              <SvgText x={70} y={115} fill="#71717A" fontSize={8.5} textAnchor="middle" fontFamily={fonts.medium}>9 AM</SvgText>
-              <SvgText x={125} y={115} fill="#71717A" fontSize={8.5} textAnchor="middle" fontFamily={fonts.medium}>12 PM</SvgText>
-              <SvgText x={185} y={115} fill="#FFFFFF" fontSize={9} textAnchor="middle" fontFamily={fonts.bold}>3 PM</SvgText>
-              <SvgText x={235} y={115} fill="#71717A" fontSize={8.5} textAnchor="middle" fontFamily={fonts.medium}>7 PM</SvgText>
-              <SvgText x={270} y={115} fill="#71717A" fontSize={8.5} textAnchor="middle" fontFamily={fonts.medium}>11 PM</SvgText>
-            </Svg>
-          </View>
-
-          {/* Minimal Key Insights Strip */}
-          <View style={styles.insightsStrip}>
-            <View style={styles.insightCol}>
-              <Text style={styles.insightVal}>2 PM – 5 PM</Text>
-              <Text style={styles.insightLabel}>Peak Window</Text>
+          {!peakTime.isEligible ? (
+            // Empty State (exact match to Image 2 with yellow arrow!)
+            <View style={styles.emptyHeatmapBox}>
+              <View style={styles.emptyNoticeInner}>
+                <Ionicons name="information-circle-outline" size={17} color="#71717A" style={{ marginRight: 6 }} />
+                <Text style={styles.emptyNoticeText}>Not enough data to show this report</Text>
+              </View>
+              <Text style={styles.emptyNoticeSub}>
+                Recover needs 21 days of focus history ({peakTime.daysRecorded} of 21 recorded) and 10 completed sessions to show your peak rhythm.
+              </Text>
             </View>
-            <View style={styles.stripDivider} />
-            <View style={styles.insightCol}>
-              <Text style={styles.insightVal}>94%</Text>
-              <Text style={styles.insightLabel}>Focus Quality</Text>
+          ) : (
+            // Full YouTube Studio Purple Activity Heatmap (matching Image 4!)
+            <View style={styles.heatmapWrapper}>
+              {/* Day Headers (Sun, Mon, Tue, Wed, Thu, Fri, Sat) */}
+              <View style={styles.heatmapDaysRow}>
+                <View style={{ width: 56 }} />
+                {heatmap.days.map((day) => (
+                  <Text key={day} style={styles.heatmapDayLabel}>
+                    {day}
+                  </Text>
+                ))}
+              </View>
+
+              {/* 4 Time Slot Rows: 12:00 AM, 6:00 AM, 12:00 PM, 6:00 PM */}
+              {heatmap.timeSlots.map((slotLabel, slotIdx) => (
+                <View key={slotLabel} style={styles.heatmapTimeRow}>
+                  <Text style={styles.heatmapTimeLabel}>{slotLabel}</Text>
+                  <View style={styles.heatmapCellsRow}>
+                    {heatmap.matrix[slotIdx].map((intensity, colIdx) => {
+                      // Purple intensity colors matching YouTube Studio
+                      const cellBg =
+                        intensity === 4
+                          ? '#C084FC' // vivid light purple
+                          : intensity === 3
+                          ? '#A855F7' // active purple
+                          : intensity === 2
+                          ? '#7E22CE' // medium purple
+                          : intensity === 1
+                          ? '#3B1261' // faint purple
+                          : '#1A102A'; // inactive dark purple
+                      return (
+                        <View
+                          key={colIdx}
+                          style={[styles.heatmapCell, { backgroundColor: cellBg }]}
+                        />
+                      );
+                    })}
+                  </View>
+                </View>
+              ))}
+
+              <View style={styles.heatmapFooterNote}>
+                <Ionicons name="sparkles" size={13} color="#C084FC" style={{ marginRight: 5 }} />
+                <Text style={styles.heatmapFooterText}>
+                  {peakTime.insightText}
+                </Text>
+              </View>
             </View>
-            <View style={styles.stripDivider} />
-            <View style={styles.insightCol}>
-              <Text style={styles.insightVal}>52 mins</Text>
-              <Text style={styles.insightLabel}>Avg Session</Text>
-            </View>
-          </View>
+          )}
         </View>
       </ScrollView>
 
-      {/* Fullscreen Frosted Glass Blur Overlay for Free Users matching reference */}
+      {/* YOUTUBE STUDIO STYLE DATE FILTER DROPDOWN MODAL (matching Image 3) */}
+      <Modal
+        visible={showFilterDropdown}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowFilterDropdown(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setShowFilterDropdown(false)}>
+          <View style={[styles.dropdownMenuCard, { top: insets.top + 48 }]}>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 360 }}>
+              {FILTER_OPTIONS.map((item) => {
+                const isSelected = period === item.id;
+                return (
+                  <Pressable
+                    key={item.id}
+                    style={[styles.dropdownOptionRow, isSelected && styles.dropdownOptionRowActive]}
+                    onPress={() => {
+                      setPeriod(item.id);
+                      setScrubberIndex(null);
+                      setShowFilterDropdown(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.dropdownOptionText,
+                        isSelected && styles.dropdownOptionTextActive,
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                    {isSelected && <Ionicons name="checkmark" size={17} color="#38BDF8" />}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* Frosted Glass Paywall Overlay for Free Users */}
       {!isPlus && (
         <View style={[styles.fullscreenPaywallContainer, { top: insets.top + 52 }]}>
-          {/* Frosted Base Linear Gradient matching user reference */}
           <LinearGradient
             colors={['#72767F', '#585C65', '#454850', '#34373E']}
             locations={[0, 0.35, 0.72, 1]}
             start={{ x: 0.15, y: 0 }}
             end={{ x: 0.85, y: 1 }}
-            style={StyleSheet.absoluteFill}
+            style={styles.absoluteCover}
           />
 
-          {/* Subtle soft light bloom bleeding through frost */}
-          <View style={styles.frostBlobLight} pointerEvents="none" />
-
-          {/* Hardware Gaussian BlurView */}
           <BlurView
             intensity={Platform.OS === 'ios' ? 95 : 100}
             tint="dark"
-            style={StyleSheet.absoluteFill}
+            style={styles.absoluteCover}
           />
-
-          {/* Frosted glass specular sheen & subtle border */}
-          <View style={styles.frostGlassVeil} pointerEvents="none" />
 
           <View style={styles.centerPaywallWrap}>
             <PaywallCard
-              title="Upgrade to Recover Plus"
-              subtitle="Upgrade to Plus to unlock comprehensive focus analytics, student peak distribution, and deep session reports."
-              buttonText="Upgrade to Plus"
+              title="Upgrade to Recover Pro"
+              subtitle="Upgrade to Pro to unlock comprehensive focus analytics, student peak distribution, and deep session reports."
+              buttonText="Upgrade to Pro"
               onPress={() => navigation.navigate('Pricing')}
             />
           </View>
@@ -315,14 +618,19 @@ export default function AnalyticsScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#0F0F0F',
+  },
+  topBar: {
+    backgroundColor: '#0F0F0F',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#27272A',
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
   },
   backBtn: {
     width: 36,
@@ -331,274 +639,349 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: {
+  screenTitle: {
     color: '#FFFFFF',
     fontFamily: fonts.bold,
     fontSize: 18,
+    letterSpacing: -0.3,
+  },
+  dateDropdownPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#27272A',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  dateDropdownText: {
+    color: '#FFFFFF',
+    fontFamily: fonts.medium,
+    fontSize: 12.5,
+    maxWidth: 100,
+  },
+  subTabsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+  },
+  subTabItem: {
+    paddingVertical: 10,
+    marginRight: 22,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  subTabItemActive: {
+    borderBottomColor: '#FFFFFF',
+  },
+  subTabText: {
+    color: '#71717A',
+    fontFamily: fonts.medium,
+    fontSize: 14,
+  },
+  subTabTextActive: {
+    color: '#FFFFFF',
+    fontFamily: fonts.bold,
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 16,
   },
-  userBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#111113',
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderWidth: 1,
-    borderColor: '#222226',
-    marginBottom: 14,
+  headlineBox: {
+    marginBottom: 16,
+    paddingHorizontal: 2,
   },
-  userLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarRing: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(45, 212, 191, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(45, 212, 191, 0.25)',
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  userNameText: {
+  headlineTitle: {
     color: '#FFFFFF',
     fontFamily: fonts.bold,
-    fontSize: 14.5,
-    marginRight: 6,
+    fontSize: 19,
+    letterSpacing: -0.4,
+    marginBottom: 4,
   },
-  userHandleText: {
+  headlineSub: {
     color: '#71717A',
     fontFamily: fonts.regular,
-    fontSize: 12,
+    fontSize: 13,
   },
-  proBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.14)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-  },
-  proBadgeText: {
-    color: '#FFFFFF',
-    fontFamily: fonts.bold,
-    fontSize: 9,
-    letterSpacing: 0.5,
-  },
-  freeBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.18)',
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-  },
-  freeBadgeText: {
-    color: '#D4D4D8',
-    fontFamily: fonts.bold,
-    fontSize: 9,
-    letterSpacing: 0.5,
-  },
-  creditsPill: {
-    backgroundColor: '#18181B',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#27272A',
-  },
-  creditsPillText: {
-    color: '#FFFFFF',
-    fontFamily: fonts.semibold,
-    fontSize: 12,
-  },
-  heroCard: {
-    backgroundColor: '#111113',
-    borderRadius: 24,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    marginBottom: 14,
-  },
-  periodSwitcher: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#18181B',
-    borderRadius: 18,
-    padding: 3,
-    alignSelf: 'flex-start',
+  studioCard: {
+    backgroundColor: '#1E1E22',
+    borderRadius: 16,
+    padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#242428',
+    borderColor: '#2A2A2E',
   },
-  periodBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 5.5,
-    borderRadius: 15,
-  },
-  periodBtnActive: {
-    backgroundColor: '#FFFFFF',
-  },
-  periodBtnText: {
-    color: '#9CA3AF',
-    fontFamily: fonts.medium,
-    fontSize: 12,
-  },
-  periodBtnTextActive: {
-    color: '#000000',
-    fontFamily: fonts.bold,
-  },
-  statHeaderRow: {
+  metricTabsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 10,
-  },
-  heroNumber: {
-    color: '#FFFFFF',
-    fontFamily: fonts.bold,
-    fontSize: 26,
-    letterSpacing: -0.5,
-  },
-  heroSub: {
-    color: '#71717A',
-    fontFamily: fonts.regular,
-    fontSize: 12.5,
-    marginTop: 2,
-  },
-  approxUpper: {
-    color: '#71717A',
-    fontFamily: fonts.semibold,
-    fontSize: 9.5,
-    letterSpacing: 0.8,
-  },
-  approxNumber: {
-    color: '#FFFFFF',
-    fontFamily: fonts.bold,
-    fontSize: 16,
-    marginTop: 1,
-  },
-  approxDetail: {
-    color: '#71717A',
-    fontFamily: fonts.regular,
-    fontSize: 11,
-  },
-  chartWrapper: {
-    marginTop: 8,
-  },
-  card: {
-    backgroundColor: '#111113',
-    borderRadius: 24,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    marginBottom: 14,
-  },
-  cardTopRow: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  cardTitle: {
-    color: '#FFFFFF',
-    fontFamily: fonts.bold,
-    fontSize: 16,
-  },
-  cardSub: {
-    color: '#71717A',
-    fontFamily: fonts.regular,
-    fontSize: 12,
-    marginTop: 2,
-  },
-  peakBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 12,
-    paddingHorizontal: 9,
+  metricTab: {
+    flex: 1,
     paddingVertical: 4,
+    paddingHorizontal: 2,
   },
-  peakBadgeText: {
-    color: '#FFFFFF',
-    fontFamily: fonts.bold,
+  metricTabActive: {},
+  metricLabel: {
+    color: '#A1A1AA',
+    fontFamily: fonts.medium,
     fontSize: 11.5,
+    marginBottom: 4,
   },
-  waveChartBox: {
-    marginVertical: 4,
-  },
-  insightsStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    backgroundColor: '#161618',
-    borderRadius: 16,
-    paddingVertical: 12,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: '#222226',
-  },
-  insightCol: {
-    alignItems: 'center',
-  },
-  insightVal: {
+  metricNumber: {
     color: '#FFFFFF',
     fontFamily: fonts.bold,
-    fontSize: 13.5,
-    marginBottom: 2,
+    fontSize: 17,
+    letterSpacing: -0.3,
   },
-  insightLabel: {
+  metricSubInfo: {
     color: '#71717A',
     fontFamily: fonts.regular,
     fontSize: 10.5,
+    marginTop: 2,
   },
-  stripDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: '#26262B',
+  chartWrapper: {
+    position: 'relative',
+    height: 175,
+    marginVertical: 4,
   },
-  scrollViewLocked: {
-    opacity: 0.12,
+  tooltipBox: {
+    position: 'absolute',
+    zIndex: 10,
+    backgroundColor: '#18181B',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+    elevation: 8,
+    minWidth: 130,
+  },
+  tooltipDate: {
+    color: '#D4D4D8',
+    fontFamily: fonts.medium,
+    fontSize: 10.5,
+    marginBottom: 2,
+  },
+  tooltipVal: {
+    color: '#38BDF8',
+    fontFamily: fonts.bold,
+    fontSize: 15,
+  },
+  tooltipSub: {
+    color: '#71717A',
+    fontFamily: fonts.regular,
+    fontSize: 9.5,
+  },
+  paginationDotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    gap: 6,
+  },
+  paginationDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#3F3F46',
+  },
+  paginationDotActive: {
+    backgroundColor: '#FFFFFF',
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+  },
+  cardSectionTitle: {
+    color: '#FFFFFF',
+    fontFamily: fonts.bold,
+    fontSize: 16,
+    letterSpacing: -0.3,
+    marginBottom: 2,
+  },
+  cardSectionSub: {
+    color: '#71717A',
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    marginBottom: 16,
+  },
+  topContentList: {
+    gap: 12,
+  },
+  topContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  appIconThumb: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: '#27272A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  barContainer: {
+    flex: 1,
+    marginRight: 14,
+  },
+  appRowName: {
+    color: '#FFFFFF',
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    marginBottom: 5,
+  },
+  greenBarTrack: {
+    height: 9,
+    backgroundColor: '#27272A',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  greenBarFill: {
+    height: '100%',
+    backgroundColor: '#22C55E', // YouTube Studio bright green bar matching Image 1!
+    borderRadius: 4,
+  },
+  appMinsValue: {
+    color: '#FFFFFF',
+    fontFamily: fonts.semibold,
+    fontSize: 13.5,
+    minWidth: 42,
+    textAlign: 'right',
+  },
+  emptyHeatmapBox: {
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#2A2A2E',
+  },
+  emptyNoticeInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  emptyNoticeText: {
+    color: '#A1A1AA',
+    fontFamily: fonts.semibold,
+    fontSize: 13,
+  },
+  emptyNoticeSub: {
+    color: '#71717A',
+    fontFamily: fonts.regular,
+    fontSize: 11.5,
+    lineHeight: 16,
+  },
+  heatmapWrapper: {
+    marginTop: 4,
+  },
+  heatmapDaysRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  heatmapDayLabel: {
+    flex: 1,
+    textAlign: 'center',
+    color: '#71717A',
+    fontFamily: fonts.medium,
+    fontSize: 11,
+  },
+  heatmapTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  heatmapTimeLabel: {
+    width: 56,
+    color: '#71717A',
+    fontFamily: fonts.regular,
+    fontSize: 10,
+  },
+  heatmapCellsRow: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 4,
+  },
+  heatmapCell: {
+    flex: 1,
+    height: 18,
+    borderRadius: 3,
+  },
+  heatmapFooterNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#2A2A2E',
+  },
+  heatmapFooterText: {
+    color: '#D4D4D8',
+    fontFamily: fonts.medium,
+    fontSize: 12,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  },
+  dropdownMenuCard: {
+    position: 'absolute',
+    right: 16,
+    width: 200,
+    backgroundColor: '#1E1E22',
+    borderRadius: 14,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#323238',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.7,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  dropdownOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  dropdownOptionRowActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  dropdownOptionText: {
+    color: '#D4D4D8',
+    fontFamily: fonts.medium,
+    fontSize: 13.5,
+  },
+  dropdownOptionTextActive: {
+    color: '#38BDF8',
+    fontFamily: fonts.semibold,
   },
   fullscreenPaywallContainer: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 10,
-    overflow: 'hidden',
+    zIndex: 99,
   },
-  frostBlobLight: {
+  absoluteCover: {
     position: 'absolute',
-    top: '8%',
-    right: '8%',
-    width: 190,
-    height: 190,
-    borderRadius: 95,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  frostGlassVeil: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.14)',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   centerPaywallWrap: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 40,
+    alignItems: 'center',
+    paddingHorizontal: 24,
   },
 });

@@ -1,101 +1,217 @@
-import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useState } from 'react';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import PillButton from '../components/PillButton';
-import { GoogleG } from '../components/Icons';
-import { BRAND_NAME, colors, fonts } from '../theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GoogleG, RecoverWordmark } from '../components/Icons';
+import LegalNoticeModal from '../components/LegalNoticeModal';
+import { fonts } from '../theme';
+import { FirebaseAuthService } from '../services/firebaseAuthService';
 import type { RootStackParamList } from '../../App';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
 
-const HERO = require('../../assets/hero-photo.jpg');
+export const SKY_BLUE = '#028BFF';
 
+/**
+ * App B Sign Up / Auth Screen
+ * Features the signature sky-blue background matching the splash screen with centered RECOVER wordmark
+ * and a sleek rounded dark card housing Google, Email, and Log in options.
+ */
 export default function SignUpScreen({ navigation }: Props) {
-  const { width, height } = useWindowDimensions();
+  const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const go = () => navigation.reset({ index: 0, routes: [{ name: 'Dashboard' }] });
-  // Hero photo (1024x1536) fills full width, anchored to top and centered
-  const imgH = width * 1.5;
+  const [legalModalType, setLegalModalType] = useState<'terms' | 'privacy' | 'notices' | null>(null);
+
+  const [loading, setLoading] = useState(false);
+
+  const handleSignUp = async () => {
+    await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
+    navigation.navigate('RecoverPro', { fromOnboarding: true });
+  };
+
+  const handleGoogleSignUp = async () => {
+    setLoading(true);
+    try {
+      await FirebaseAuthService.loginWithGoogle();
+      await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
+      navigation.navigate('RecoverPro', { fromOnboarding: true });
+    } catch {
+      await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
+      navigation.navigate('RecoverPro', { fromOnboarding: true });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogin = () => {
+    navigation.navigate('Login');
+  };
+
+  const isSmall = height < 700;
 
   return (
     <View style={styles.root}>
-      <Image
-        source={HERO}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          width: '100%',
-          height: Math.max(imgH, height * 0.65),
-        }}
-        resizeMode="cover"
-      />
-      {/* Smooth gradient transition fading into solid black behind text */}
-      <LinearGradient
-        colors={[
-          'rgba(0,0,0,0)',
-          'rgba(0,0,0,0.18)',
-          'rgba(0,0,0,0.65)',
-          'rgba(0,0,0,0.95)',
-          '#000000',
-        ]}
-        locations={[0, 0.35, 0.65, 0.88, 1]}
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          top: height * 0.35,
-          height: height * 0.28,
-        }}
-      />
-      {/* Solid black from the fade point down to the bottom */}
-      <View
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          top: height * 0.62,
-          bottom: 0,
-          backgroundColor: '#000000',
-        }}
-      />
-
-      <Text style={[styles.brand, { marginTop: insets.top + 16 }]}>{BRAND_NAME.toUpperCase()}</Text>
-
-      <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, 12) + 36 }]}>
-        <Text style={styles.headline}>Your focus.{'\n'}Your rewards.</Text>
-        <Text style={styles.sub}>Focus to earn credits. Spend them to unlock apps.</Text>
-
-        <View style={{ height: 36 }} />
-        <PillButton variant="dark" title="Continue with Google" icon={<GoogleG size={24} />} onPress={go} height={49} fontSize={15.5} style={styles.btn} />
-        <View style={{ height: 9 }} />
-        <PillButton variant="dark" title="Sign up with email" icon={<Feather name="mail" size={22} color="#fff" />} onPress={go} height={49} fontSize={15.5} style={styles.btn} />
-
-        <Text style={styles.legal}>
-          By continuing, you agree to {BRAND_NAME}'s <Text style={styles.legalBold}>Terms of Service</Text>
-          {'\n'}and <Text style={styles.legalBold}>Privacy Policy</Text>.
-        </Text>
-        <Pressable onPress={go}>
-          <Text style={styles.signin}>Already have an account? Sign in</Text>
-        </Pressable>
+      {/* Upper Sky Blue Area with generous, even space above wordmark */}
+      <View style={[styles.topBlueArea, { paddingTop: Math.max(insets.top, 24) + (isSmall ? 20 : 36) }]}>
+        <View style={styles.wordmarkContainer}>
+          <RecoverWordmark width={228} />
+        </View>
       </View>
+
+      {/* Bottom Dark Card */}
+      <View
+        style={[
+          styles.bottomCard,
+          {
+            paddingBottom: Math.max(insets.bottom, 16) + (isSmall ? 10 : 18),
+          },
+        ]}
+      >
+        {/* Continue with Google */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.btnFilled,
+            (pressed || loading) && styles.btnPressed,
+          ]}
+          onPress={handleGoogleSignUp}
+          disabled={loading}
+        >
+          <View style={styles.btnIcon}>
+            <GoogleG size={22} />
+          </View>
+          <Text style={styles.btnText}>
+            {loading ? 'Connecting with Google...' : 'Continue with Google'}
+          </Text>
+        </Pressable>
+
+        {/* Sign up with email */}
+        <Pressable
+          style={({ pressed }) => [styles.btnFilled, styles.btnSpacing, pressed && styles.btnPressed]}
+          onPress={handleSignUp}
+        >
+          <View style={styles.btnIcon}>
+            <Feather name="mail" size={20} color="#FFFFFF" />
+          </View>
+          <Text style={styles.btnText}>Sign up with email</Text>
+        </Pressable>
+
+        {/* Log in */}
+        <Pressable
+          style={({ pressed }) => [styles.btnOutlined, styles.btnSpacing, pressed && styles.btnPressed]}
+          onPress={handleLogin}
+        >
+          <Text style={styles.btnText}>Log in</Text>
+        </Pressable>
+
+        {/* Legal Disclaimer */}
+        <Text style={styles.legal}>
+          By signing up with Google, you agree to our{'\n'}
+          <Text
+            style={styles.legalLink}
+            onPress={() => setLegalModalType('terms')}
+          >
+            Terms of Service
+          </Text>
+          {' '}and consent to our{' '}
+          <Text
+            style={styles.legalLink}
+            onPress={() => setLegalModalType('privacy')}
+          >
+            Privacy Policy
+          </Text>
+          .
+        </Text>
+      </View>
+
+      {/* Legal Notice Modal */}
+      <LegalNoticeModal
+        visible={legalModalType !== null}
+        type={legalModalType}
+        onClose={() => setLegalModalType(null)}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000000', overflow: 'hidden' },
-  brand: { color: colors.white, fontFamily: fonts.semibold, fontSize: 18, letterSpacing: 7.5, textAlign: 'center', paddingLeft: 7.5 },
-  bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 18, alignItems: 'center' },
-  headline: { color: colors.white, fontFamily: fonts.bold, fontSize: 40, lineHeight: 41, letterSpacing: -1.6, textAlign: 'center' },
-  sub: { color: '#D2D2D6', fontFamily: fonts.regular, fontSize: 14.5, marginTop: 12, textAlign: 'center' },
-  btn: { alignSelf: 'stretch' },
-  legal: { color: '#A1A1A6', fontFamily: fonts.regular, fontSize: 12, lineHeight: 16, textAlign: 'center', marginTop: 32 },
-  legalBold: { color: colors.white, fontFamily: fonts.semibold },
-  signin: { color: colors.white, fontFamily: fonts.regular, fontSize: 14.5, textDecorationLine: 'underline', marginTop: 22 },
+  root: {
+    flex: 1,
+    backgroundColor: SKY_BLUE,
+  },
+  topBlueArea: {
+    flex: 1,
+    backgroundColor: SKY_BLUE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 20,
+  },
+  wordmarkContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomCard: {
+    backgroundColor: '#0C0C0E',
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
+    borderWidth: 1,
+    borderColor: '#1D1D22',
+    paddingHorizontal: 22,
+    paddingTop: 24,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    elevation: 16,
+  },
+  btnFilled: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#262629',
+    height: 52,
+    borderRadius: 999,
+    paddingHorizontal: 20,
+  },
+  btnOutlined: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0F0F12',
+    height: 52,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#383840',
+    paddingHorizontal: 20,
+  },
+  btnSpacing: {
+    marginTop: 11,
+  },
+  btnPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.99 }],
+  },
+  btnIcon: {
+    marginRight: 10,
+  },
+  btnText: {
+    color: '#FFFFFF',
+    fontFamily: fonts.medium,
+    fontSize: 15.5,
+    letterSpacing: 0.1,
+  },
+  legal: {
+    color: '#A1A1A6',
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+    marginTop: 22,
+    paddingHorizontal: 12,
+  },
+  legalLink: {
+    color: '#FFFFFF',
+    fontFamily: fonts.medium,
+    textDecorationLine: 'underline',
+  },
 });
-

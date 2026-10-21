@@ -44,12 +44,14 @@ export default function OnboardingModal({ visible, onClose }: Props) {
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const [activeDialog, setActiveDialog] = useState<PermissionDialogType>(null);
   const [showAppPicker, setShowAppPicker] = useState(false);
+  const [prevVisible, setPrevVisible] = useState(visible);
 
   const { distractingApps } = useApp();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
-  useEffect(() => {
+  if (prevVisible !== visible) {
+    setPrevVisible(visible);
     if (visible) {
       setStep(1);
       setActiveDialog(null);
@@ -57,7 +59,7 @@ export default function OnboardingModal({ visible, onClose }: Props) {
       setShowReadMore(false);
       setShowAppPicker(false);
     }
-  }, [visible]);
+  }
 
   useEffect(() => {
     const showSub = Keyboard.addListener(
@@ -156,7 +158,7 @@ export default function OnboardingModal({ visible, onClose }: Props) {
 
             <Text style={styles.title}>Select distracting apps{'\n'}for your card to block</Text>
             <Text style={styles.subtitle}>
-              {BRAND_NAME} needs Screen Time access to block and unblock your apps. Without it, withdrawals can't operate.
+              {BRAND_NAME} needs Screen Time access to block and unblock your apps. Without it, withdrawals can&apos;t operate.
             </Text>
 
             {/* Shield Info Box */}
@@ -214,7 +216,7 @@ export default function OnboardingModal({ visible, onClose }: Props) {
 
             {showReadMore && (
               <Text style={styles.expandedText}>
-                AR Mode monitors your device's placement in real-time. If the phone is lifted during an active focus session, your card is automatically paused.
+                AR Mode monitors your device&apos;s placement in real-time. If the phone is lifted during an active focus session, your card is automatically paused.
               </Text>
             )}
 
@@ -248,10 +250,10 @@ export default function OnboardingModal({ visible, onClose }: Props) {
               )}
 
               <Text style={[styles.title, isKeyboardOpen && styles.titleCompact]}>
-                What's your name?
+                What&apos;s your name?
               </Text>
               {!isKeyboardOpen && (
-                <Text style={styles.subtitle}>Let's personalize your experience.</Text>
+                <Text style={styles.subtitle}>Let&apos;s personalize your experience.</Text>
               )}
 
               <View
@@ -358,7 +360,7 @@ export default function OnboardingModal({ visible, onClose }: Props) {
                     </Text>
 
                     <Text style={styles.noteSubhead}>
-                      If Android shows "Restricted setting: For your security, this setting is currently unavailable", follow these exact steps:
+                      If Android shows &ldquo;Restricted setting: For your security, this setting is currently unavailable&rdquo;, follow these exact steps:
                     </Text>
 
                     <View style={styles.stepItem}>
@@ -383,7 +385,7 @@ export default function OnboardingModal({ visible, onClose }: Props) {
                     </View>
                     <View style={styles.stepItem}>
                       <Text style={styles.stepNum}>6.</Text>
-                      <Text style={styles.stepText}>Tap <Text style={styles.stepBold}>"Allow restricted settings"</Text> (confirm with your fingerprint or PIN).</Text>
+                      <Text style={styles.stepText}>Tap <Text style={styles.stepBold}>&ldquo;Allow restricted settings&rdquo;</Text> (confirm with your fingerprint or PIN).</Text>
                     </View>
                     <View style={styles.stepItem}>
                       <Text style={styles.stepNum}>7.</Text>

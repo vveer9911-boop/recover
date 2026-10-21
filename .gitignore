@@ -3,6 +3,9 @@ node_modules/
 
 # Expo / build
 .expo/
+.expo
+/.expo
+/.expo/
 dist/
 web-build/
 expo-env.d.ts
@@ -33,3 +36,10 @@ yarn-debug.*
 
 # Subfolder cleanup
 recover-app/
+
+# Temporary test images
+card1_test.png
+card2_test.png
+assets/*test*
+assets/temp*
+assets/*.zip

@@ -19,9 +19,9 @@ interface PaywallCardProps {
 }
 
 export default function PaywallCard({
-  title = 'Upgrade to Recover Plus',
-  subtitle = 'Upgrade to Plus to unlock these features.',
-  buttonText = 'Upgrade to Plus',
+  title = 'Upgrade to Recover Pro',
+  subtitle = 'Upgrade to Pro to unlock these features.',
+  buttonText = 'Upgrade to Pro',
   onPress,
   style,
 }: PaywallCardProps) {

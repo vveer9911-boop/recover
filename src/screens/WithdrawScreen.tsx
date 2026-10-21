@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
-  Alert,
   Modal,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -34,13 +33,49 @@ export default function WithdrawScreen() {
     isCalmDownActive,
     calmDownHours,
     endCalmDown,
-    calmDownUntil,
+    emergencyAdsWatched,
+    watchEmergencyAd,
   } = useApp();
 
   const [inputMinutes, setInputMinutes] = useState<number>(15);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [calmDownTriggered, setCalmDownTriggered] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Emergency Ad States
+  const [showEmergencyAdPrompt, setShowEmergencyAdPrompt] = useState(false);
+  const [showEmergencyLimitAlert, setShowEmergencyLimitAlert] = useState(false);
+  const [isPlayingAd, setIsPlayingAd] = useState(false);
+  const [adSecondsRemaining, setAdSecondsRemaining] = useState(30);
+  const [showRewardToast, setShowRewardToast] = useState(false);
+
+  // Ad 30-Second Countdown Timer
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | null = null;
+    if (isPlayingAd && adSecondsRemaining > 0) {
+      timer = setInterval(() => {
+        setAdSecondsRemaining((prev) => {
+          if (prev <= 1) return 0;
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [isPlayingAd, adSecondsRemaining]);
+
+  const handleFinishAd = () => {
+    setIsPlayingAd(false);
+    const res = watchEmergencyAd();
+    if (res.success) {
+      setErrorMessage(null);
+      setShowRewardToast(true);
+      setTimeout(() => {
+        setShowRewardToast(false);
+      }, 4000);
+    }
+  };
 
   const handleKeyPress = (digit: string) => {
     setErrorMessage(null);
@@ -73,6 +108,16 @@ export default function WithdrawScreen() {
       setErrorMessage(
         `Calm Down is currently active (${calmDownHours}h cooldown). Take a break before unlocking more time!`
       );
+      return;
+    }
+
+    // When user has 0 credits and tries to withdraw: show emergency ad prompt
+    if (credits <= 0) {
+      if (emergencyAdsWatched >= 3) {
+        setShowEmergencyLimitAlert(true);
+      } else {
+        setShowEmergencyAdPrompt(true);
+      }
       return;
     }
 
@@ -130,7 +175,7 @@ export default function WithdrawScreen() {
               <Text style={styles.calmDownBannerTitle}>Calm Down Active ({calmDownHours}h)</Text>
             </View>
             <Text style={styles.calmDownBannerSub}>
-              Spend limit reached. Cooldown active to help you reset.
+              Calm down mode active. Cooldown active to help you reset.
             </Text>
           </View>
           <Pressable
@@ -237,7 +282,7 @@ export default function WithdrawScreen() {
         <Pressable
           style={({ pressed }) => [
             styles.withdrawBtn,
-            (inputMinutes <= 0 || inputMinutes > credits) && styles.withdrawBtnDisabled,
+            (credits > 0 && (inputMinutes <= 0 || inputMinutes > credits)) && styles.withdrawBtnDisabled,
             pressed && { opacity: 0.85 },
           ]}
           onPress={handleWithdraw}
@@ -279,7 +324,7 @@ export default function WithdrawScreen() {
               <View style={styles.modalCalmDownAlert}>
                 <Ionicons name="hourglass-outline" size={16} color="#B45309" style={{ marginRight: 6 }} />
                 <Text style={styles.modalCalmDownAlertText}>
-                  Spend limit reached! A {calmDownHours}h calm down is now active before more time can be unlocked.
+                  A {calmDownHours}h calm down is now active before more time can be unlocked.
                 </Text>
               </View>
             )}
@@ -299,6 +344,177 @@ export default function WithdrawScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* 1. APPLE-STYLE EMERGENCY CREDITS AD PERMISSION MODAL */}
+      <Modal
+        visible={showEmergencyAdPrompt}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEmergencyAdPrompt(false)}
+      >
+        <View style={styles.appleModalBackdrop}>
+          <View style={styles.appleAlertCard}>
+            <View style={styles.appleAlertContent}>
+              <Text style={styles.appleAlertTitle}>Emergency Credits</Text>
+              <Text style={styles.appleAlertReason}>
+                Watch an 30 seconds ad to get 10 credits for emergency. You can watch up to 3 ads ({emergencyAdsWatched}/3 watched).
+              </Text>
+            </View>
+
+            <View style={styles.appleAlertBtnRow}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.appleAlertBtn,
+                  pressed && { backgroundColor: '#E5E5EA' },
+                ]}
+                onPress={() => setShowEmergencyAdPrompt(false)}
+              >
+                <Text style={styles.appleCancelText}>Cancel</Text>
+              </Pressable>
+
+              <View style={styles.appleAlertDividerV} />
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.appleAlertBtn,
+                  pressed && { backgroundColor: '#E5E5EA' },
+                ]}
+                onPress={() => {
+                  setShowEmergencyAdPrompt(false);
+                  setAdSecondsRemaining(30);
+                  setIsPlayingAd(true);
+                }}
+              >
+                <Text style={styles.appleAllowText}>Continue</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 2. APPLE-STYLE EMERGENCY LIMIT REACHED MODAL (3/3 WATCHED) */}
+      <Modal
+        visible={showEmergencyLimitAlert}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEmergencyLimitAlert(false)}
+      >
+        <View style={styles.appleModalBackdrop}>
+          <View style={styles.appleAlertCard}>
+            <View style={styles.appleAlertContent}>
+              <Text style={styles.appleAlertTitle}>Ad Limit Reached</Text>
+              <Text style={styles.appleAlertReason}>
+                You have already watched 3 of 3 emergency ads. Complete focus sessions to earn more credits!
+              </Text>
+            </View>
+
+            <View style={styles.appleAlertBtnRow}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.appleAlertBtn,
+                  pressed && { backgroundColor: '#E5E5EA' },
+                ]}
+                onPress={() => setShowEmergencyLimitAlert(false)}
+              >
+                <Text style={styles.appleAllowText}>OK</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 3. FULLSCREEN BLACK DEMO AD PLAYING SCREEN */}
+      <Modal
+        visible={isPlayingAd}
+        transparent={false}
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => {
+          if (adSecondsRemaining === 0) {
+            handleFinishAd();
+          }
+        }}
+      >
+        <View style={styles.adFullscreenRoot}>
+          <StatusBar style="light" />
+
+          {/* Top 30-Second White Filling Progress Bar Option */}
+          <View style={[styles.adTopBar, { paddingTop: insets.top + 10 }]}>
+            <View style={styles.adProgressTrack}>
+              <View
+                style={[
+                  styles.adProgressFill,
+                  { width: `${((30 - adSecondsRemaining) / 30) * 100}%` },
+                ]}
+              />
+            </View>
+
+            <View style={styles.adHeaderControlsRow}>
+              <View style={styles.adTimerBadge}>
+                <Ionicons
+                  name={adSecondsRemaining === 0 ? "checkmark-circle" : "time-outline"}
+                  size={14}
+                  color={adSecondsRemaining === 0 ? "#4ADE80" : "#D4D4D8"}
+                  style={{ marginRight: 5 }}
+                />
+                <Text style={styles.adTimerText}>
+                  {adSecondsRemaining > 0 ? `Reward in ${adSecondsRemaining}s` : 'Reward Verified ✓'}
+                </Text>
+              </View>
+
+              {/* Once 30 seconds over, 'X' option appears! */}
+              {adSecondsRemaining === 0 ? (
+                <Pressable
+                  style={({ pressed }) => [styles.adCloseBtn, pressed && { opacity: 0.7 }]}
+                  onPress={handleFinishAd}
+                  hitSlop={14}
+                >
+                  <Ionicons name="close" size={24} color="#FFFFFF" />
+                </Pressable>
+              ) : (
+                <View style={{ width: 36, height: 36 }} />
+              )}
+            </View>
+          </View>
+
+          {/* Centered Content: "demo ad playing" */}
+          <View style={styles.adCenterBody}>
+            <View style={styles.adPlayIconCircle}>
+              <Ionicons name="play" size={32} color="#FFFFFF" style={{ marginLeft: 3 }} />
+            </View>
+
+            <Text style={styles.adPlayingHeadline}>demo ad playing</Text>
+            <Text style={styles.adPlayingSub}>
+              {adSecondsRemaining > 0
+                ? `Please watch the 30-second demo ad to receive 10 Emergency Credits.`
+                : 'Ad completed! Tap the ✕ above to collect your 10 credits.'}
+            </Text>
+
+            <View style={styles.adCounterPill}>
+              <Text style={styles.adCounterPillText}>
+                Emergency Ad {Math.min(emergencyAdsWatched + 1, 3)} of 3
+              </Text>
+            </View>
+          </View>
+
+          {/* Bottom Footer Note */}
+          <View style={[styles.adFooterNoteWrap, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
+            <Text style={styles.adFooterNoteText}>
+              Recover Emergency Credit System • 10 credits per ad (Max 3)
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 4. REWARD TOAST */}
+      {showRewardToast && (
+        <View style={[styles.rewardToast, { top: insets.top + 16 }]}>
+          <Ionicons name="checkmark-circle" size={18} color="#4ADE80" style={{ marginRight: 6 }} />
+          <Text style={styles.rewardToastText}>
+            10 credits credited to card (Ad credits)
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -594,5 +810,205 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#92400E',
     flexShrink: 1,
+  },
+
+  // -------------------------------------------------------------------------
+  // APPLE-STYLE ALERT MODAL (Matches Permission Asking Style)
+  // -------------------------------------------------------------------------
+  appleModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  appleAlertCard: {
+    width: '100%',
+    maxWidth: 290,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  appleAlertContent: {
+    paddingHorizontal: 18,
+    paddingTop: 20,
+    paddingBottom: 16,
+    alignItems: 'center',
+  },
+  appleAlertTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 17,
+    color: '#000000',
+    textAlign: 'center',
+    letterSpacing: -0.3,
+    marginBottom: 6,
+  },
+  appleAlertReason: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    color: '#3C3C43',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  appleAlertBtnRow: {
+    flexDirection: 'row',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#C6C6C8',
+    height: 44,
+  },
+  appleAlertBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  appleAlertDividerV: {
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: '#C6C6C8',
+  },
+  appleCancelText: {
+    fontFamily: fonts.regular,
+    fontSize: 16.5,
+    color: '#007AFF',
+  },
+  appleAllowText: {
+    fontFamily: fonts.bold,
+    fontSize: 16.5,
+    color: '#007AFF',
+  },
+
+  // -------------------------------------------------------------------------
+  // FULLSCREEN BLACK DEMO AD SCREEN
+  // -------------------------------------------------------------------------
+  adFullscreenRoot: {
+    flex: 1,
+    backgroundColor: '#000000',
+    justifyContent: 'space-between',
+  },
+  adTopBar: {
+    paddingHorizontal: 20,
+  },
+  adProgressTrack: {
+    width: '100%',
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  adProgressFill: {
+    height: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 2,
+  },
+  adHeaderControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 14,
+  },
+  adTimerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  adTimerText: {
+    color: '#FFFFFF',
+    fontFamily: fonts.medium,
+    fontSize: 13,
+  },
+  adCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  adCenterBody: {
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  adPlayIconCircle: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 22,
+  },
+  adPlayingHeadline: {
+    color: '#FFFFFF',
+    fontFamily: fonts.bold,
+    fontSize: 26,
+    textAlign: 'center',
+    letterSpacing: -0.5,
+    marginBottom: 8,
+  },
+  adPlayingSub: {
+    color: '#9CA3AF',
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 21,
+    marginBottom: 24,
+    maxWidth: 290,
+  },
+  adCounterPill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.16)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  adCounterPillText: {
+    color: '#E5E7EB',
+    fontFamily: fonts.medium,
+    fontSize: 12.5,
+  },
+  adFooterNoteWrap: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  adFooterNoteText: {
+    color: '#6B7280',
+    fontFamily: fonts.regular,
+    fontSize: 11.5,
+    textAlign: 'center',
+  },
+
+  // Reward toast
+  rewardToast: {
+    position: 'absolute',
+    alignSelf: 'center',
+    zIndex: 99,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#18181B',
+    borderWidth: 1,
+    borderColor: '#27272A',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 12,
+  },
+  rewardToastText: {
+    color: '#FFFFFF',
+    fontFamily: fonts.medium,
+    fontSize: 13,
   },
 });

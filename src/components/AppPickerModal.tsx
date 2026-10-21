@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   View,
@@ -6,13 +6,15 @@ import {
   StyleSheet,
   Pressable,
   ScrollView,
-  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons, Feather } from '@expo/vector-icons';
-import Svg, { Path, Rect, Circle, Defs, LinearGradient, Stop, G } from 'react-native-svg';
+import Svg, { Path, Rect, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { fonts } from '../theme';
 import { useApp } from '../context/AppContext';
+import type { RootStackParamList } from '../../App';
 
 export interface AppItem {
   id: string;
@@ -216,16 +218,26 @@ interface AppPickerModalProps {
 }
 
 export default function AppPickerModal({ visible, onClose, onSave }: AppPickerModalProps) {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
-  const { distractingApps, setDistractingApps } = useApp();
+  const { distractingApps, setDistractingApps, isPlus } = useApp();
 
-  const [selected, setSelected] = useState<string[]>(distractingApps || ['Instagram', 'TikTok']);
+  const [selected, setSelected] = useState<string[]>(() => {
+    const initial = distractingApps && distractingApps.length > 0 ? distractingApps : ['YouTube', 'Instagram', 'TikTok'];
+    return !isPlus && initial.length > 3 ? initial.slice(0, 3) : initial;
+  });
+  const [showLimitPopup, setShowLimitPopup] = useState(false);
+  const [prevVisible, setPrevVisible] = useState(visible);
 
-  useEffect(() => {
+  if (prevVisible !== visible) {
+    setPrevVisible(visible);
     if (visible) {
-      setSelected(distractingApps || ['Instagram', 'TikTok']);
+      const initial = distractingApps && distractingApps.length > 0 ? distractingApps : ['YouTube', 'Instagram', 'TikTok'];
+      const clamped = !isPlus && initial.length > 3 ? initial.slice(0, 3) : initial;
+      setSelected(clamped);
+      setShowLimitPopup(false);
     }
-  }, [visible, distractingApps]);
+  }
 
   const isAllSelected = selected.length === DEVICE_APPS.length;
 
@@ -233,6 +245,10 @@ export default function AppPickerModal({ visible, onClose, onSave }: AppPickerMo
     if (isAllSelected) {
       setSelected([]);
     } else {
+      if (!isPlus) {
+        setShowLimitPopup(true);
+        return;
+      }
       setSelected(DEVICE_APPS.map((a) => a.id));
     }
   };
@@ -242,9 +258,19 @@ export default function AppPickerModal({ visible, onClose, onSave }: AppPickerMo
       if (prev.includes(id)) {
         return prev.filter((item) => item !== id);
       } else {
+        if (!isPlus && prev.length >= 3) {
+          setShowLimitPopup(true);
+          return prev;
+        }
         return [...prev, id];
       }
     });
+  };
+
+  const handleUpgradeFromPopup = () => {
+    setShowLimitPopup(false);
+    onClose();
+    navigation.navigate('Pricing');
   };
 
   const handleContinue = () => {
@@ -408,12 +434,121 @@ export default function AppPickerModal({ visible, onClose, onSave }: AppPickerMo
             </Text>
           </Pressable>
         </View>
+
+        {/* 3 App Block Limit Alert Modal (Apple permission-style dialog) */}
+        <Modal
+          visible={showLimitPopup}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowLimitPopup(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.alertCard}>
+              <View style={styles.alertContent}>
+                <Text style={styles.alertTitle}>3 App Block for Free Users</Text>
+                <Text style={styles.alertReason}>
+                  Free users can block up to 3 apps. Upgrade to Pro for more app blocks and unlimited protection.
+                </Text>
+              </View>
+
+              {/* Bottom Button Row */}
+              <View style={styles.alertBtnRow}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.alertBtn,
+                    pressed && { backgroundColor: '#E5E5EA' },
+                  ]}
+                  onPress={() => setShowLimitPopup(false)}
+                >
+                  <Text style={styles.alertCancelText}>Cancel</Text>
+                </Pressable>
+
+                <View style={styles.alertDividerV} />
+
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.alertBtn,
+                    pressed && { backgroundColor: '#E5E5EA' },
+                  ]}
+                  onPress={handleUpgradeFromPopup}
+                >
+                  <Text style={styles.alertUpgradeText}>Upgrade to Pro</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  alertCard: {
+    width: '100%',
+    maxWidth: 290,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 20,
+  },
+  alertContent: {
+    paddingTop: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 18,
+    alignItems: 'center',
+  },
+  alertTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 16.5,
+    color: '#000000',
+    textAlign: 'center',
+    letterSpacing: -0.3,
+    marginBottom: 6,
+  },
+  alertReason: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    color: '#3C3C43',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  alertBtnRow: {
+    flexDirection: 'row',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#C6C6C8',
+    height: 44,
+  },
+  alertBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alertDividerV: {
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: '#C6C6C8',
+  },
+  alertCancelText: {
+    fontFamily: fonts.regular,
+    fontSize: 16.5,
+    color: '#007AFF',
+  },
+  alertUpgradeText: {
+    fontFamily: fonts.bold,
+    fontSize: 16.5,
+    color: '#007AFF',
+  },
   root: {
     flex: 1,
     backgroundColor: '#0A0A0E',

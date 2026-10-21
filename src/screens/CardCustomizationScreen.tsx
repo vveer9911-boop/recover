@@ -5,160 +5,35 @@ import {
   StyleSheet,
   Pressable,
   ScrollView,
-  Platform,
-  Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
-import { fonts, colors } from '../theme';
+import { fonts } from '../theme';
 import { useApp } from '../context/AppContext';
-import { CATEGORIES, getCardDesign, CardDesign, CategoryInfo } from '../data/cardDesigns';
+import { CARD_DESIGNS, CardDesign } from '../data/cardDesigns';
 import FocusCard from '../components/FocusCard';
 
-// ---------------------------------------------------------------------------
-// MEMOIZED GALLERY ITEM (Isolates re-renders to only the toggled cards)
-// ---------------------------------------------------------------------------
-interface CardGalleryItemProps {
-  card: CardDesign;
-  isSelected: boolean;
-  isApplied: boolean;
-  credits: number;
-  userName?: string;
-  onSelect: (id: string) => void;
-}
-
-const CardGalleryItem = React.memo(
-  function CardGalleryItem({
-    card,
-    isSelected,
-    isApplied,
-    credits,
-    userName,
-    onSelect,
-  }: CardGalleryItemProps) {
-    const handlePress = useCallback(() => {
-      onSelect(card.id);
-    }, [card.id, onSelect]);
-
-    return (
-      <View style={styles.cardItemWrap}>
-        <FocusCard
-          orientation="landscape"
-          width={204}
-          height={128}
-          designId={card.id}
-          customDesign={card}
-          credits={credits}
-          cardholderName={userName}
-          isSelected={isSelected}
-          isApplied={isApplied}
-          onPress={handlePress}
-        />
-        <Text
-          numberOfLines={1}
-          style={[
-            styles.cardNameLabel,
-            isSelected && styles.cardNameLabelSelected,
-          ]}
-        >
-          {card.name}
-        </Text>
-      </View>
-    );
-  },
-  (prev, next) =>
-    prev.isSelected === next.isSelected &&
-    prev.isApplied === next.isApplied &&
-    prev.card.id === next.card.id &&
-    prev.credits === next.credits &&
-    prev.userName === next.userName
-);
-
-// ---------------------------------------------------------------------------
-// MEMOIZED CATEGORY ROW
-// ---------------------------------------------------------------------------
-interface CategorySectionProps {
-  category: CategoryInfo;
-  selectedId: string;
-  activeCardId: string;
-  credits: number;
-  userName?: string;
-  onSelect: (id: string) => void;
-}
-
-const CategorySection = React.memo(
-  function CategorySection({
-    category,
-    selectedId,
-    activeCardId,
-    credits,
-    userName,
-    onSelect,
-  }: CategorySectionProps) {
-    return (
-      <View style={styles.categorySection}>
-        {/* Category Header */}
-        <View style={styles.categoryHeader}>
-          <Text style={styles.categoryTitle}>{category.title}</Text>
-          {category.description ? (
-            <Text style={styles.categoryDesc}>{category.description}</Text>
-          ) : null}
-        </View>
-
-        {/* Horizontal Carousel of Cards (Horizontal Landscape Cards) */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.horizontalRow}
-          nestedScrollEnabled={true}
-          directionalLockEnabled={true}
-          keyboardShouldPersistTaps="handled"
-        >
-          {category.cards.map((card) => (
-            <CardGalleryItem
-              key={card.id}
-              card={card}
-              isSelected={card.id === selectedId}
-              isApplied={card.id === activeCardId}
-              credits={credits}
-              userName={userName}
-              onSelect={onSelect}
-            />
-          ))}
-        </ScrollView>
-      </View>
-    );
-  },
-  (prev, next) => {
-    // Only re-render category row if selected card was in this category or is now in this category
-    const prevInCat = prev.category.cards.some((c) => c.id === prev.selectedId || c.id === prev.activeCardId);
-    const nextInCat = next.category.cards.some((c) => c.id === next.selectedId || c.id === next.activeCardId);
-    if (!prevInCat && !nextInCat) return true; // neither previous nor next selected card belongs here
-    return (
-      prev.selectedId === next.selectedId &&
-      prev.activeCardId === next.activeCardId &&
-      prev.credits === next.credits &&
-      prev.userName === next.userName
-    );
-  }
-);
-
-// ---------------------------------------------------------------------------
-// MAIN CARD CUSTOMIZATION SCREEN
-// ---------------------------------------------------------------------------
 export default function CardCustomizationScreen() {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { activeCardId, setActiveCardId, credits, userName, isPlus } = useApp();
 
   // The card currently selected for preview
   const [selectedId, setSelectedId] = useState<string>(activeCardId);
 
-  const classicCategory = CATEGORIES.find((c) => c.id === 'Classic') || CATEGORIES[0];
+  // Free users are redirected to Pricing
+  useEffect(() => {
+    if (!isPlus) {
+      navigation.replace('Pricing');
+    }
+  }, [isPlus, navigation]);
 
+  const selectedCard = CARD_DESIGNS.find((c) => c.id === selectedId) || CARD_DESIGNS[2];
   const isCurrentlyApplied = selectedId === activeCardId;
 
   const handleSelect = useCallback((id: string) => {
@@ -173,20 +48,11 @@ export default function CardCustomizationScreen() {
     }
   }, [navigation]);
 
-  useEffect(() => {
-    if (!isPlus) {
-      navigation.replace('Pricing');
-    }
-  }, [isPlus, navigation]);
-
   const handleApply = useCallback(async () => {
-    // Free User trying to change to another card:
     if (!isPlus) {
       navigation.navigate('Pricing');
       return;
     }
-
-    // Pro User: apply the selected card!
     if (selectedId && selectedId !== activeCardId) {
       await setActiveCardId(selectedId);
     }
@@ -194,10 +60,17 @@ export default function CardCustomizationScreen() {
   }, [isPlus, selectedId, activeCardId, setActiveCardId, handleBack, navigation]);
 
   const sanitizedUserName = userName.trim() ? userName : undefined;
+  const cardPreviewWidth = Math.min(width - 40, 340);
+  const cardPreviewHeight = Math.round((cardPreviewWidth / 280) * 176);
+
+  // Gallery item card width (two column grid or full row)
+  const isTabletOrWide = width >= 600;
+  const gridItemWidth = isTabletOrWide ? (width - 60) / 2 : width - 40;
+  const gridCardHeight = Math.round((gridItemWidth / 280) * 176);
 
   return (
     <View style={styles.root}>
-      {/* Top Header: Back Button ONLY */}
+      {/* Top Header: Back Button & Title */}
       <View style={[styles.navHeader, { paddingTop: insets.top + 8 }]}>
         <Pressable
           style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
@@ -207,90 +80,116 @@ export default function CardCustomizationScreen() {
         >
           <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
         </Pressable>
+        <Text style={styles.headerTitle}>Card Gallery</Text>
+        <View style={{ width: 38 }} />
       </View>
 
       {/* Main Scrollable Collections Area */}
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + 95 },
+          { paddingBottom: insets.bottom + 100 },
         ]}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        nestedScrollEnabled={true}
       >
-        {/* Editorial Title & Subtitle matching reference */}
+        {/* Editorial Title & Subtitle */}
         <View style={styles.titleSection}>
           <Text style={styles.mainTitle}>Make it yours.</Text>
-          <Text style={styles.subTitle}>Colour, finish and style your card.</Text>
+          <Text style={styles.subTitle}>17 brushed-steel cards crafted for Recover Pro.</Text>
         </View>
 
-        {/* Classic Collection in Vertical Showcase - No Blur */}
-        {classicCategory && (
-          <View style={styles.verticalClassicSection}>
-            <View style={styles.categoryHeader}>
-              <Text style={styles.categoryTitle}>{classicCategory.title}</Text>
-              <Text style={styles.categorySub}>{classicCategory.description}</Text>
+        {/* Selected Card Spotlight */}
+        <View style={styles.spotlightContainer}>
+          <Text style={styles.spotlightLabel}>PREVIEW</Text>
+          <View style={styles.spotlightCardWrap}>
+            <FocusCard
+              width={cardPreviewWidth}
+              height={cardPreviewHeight}
+              designId={selectedCard.id}
+              customDesign={selectedCard}
+              credits={credits}
+              cardholderName={sanitizedUserName}
+              isApplied={isCurrentlyApplied}
+            />
+          </View>
+          <View style={styles.spotlightMeta}>
+            <View style={styles.spotlightNumberBadge}>
+              <Text style={styles.spotlightNumberText}>#{selectedCard.cardNumber}</Text>
             </View>
-            <View style={styles.verticalCardList}>
-              {classicCategory.cards.map((card) => {
-                const isSelected = card.id === selectedId;
-                const isApplied = card.id === activeCardId;
-                return (
-                  <View key={card.id} style={styles.verticalCardItem}>
-                    <Pressable
-                      onPress={() => handleSelect(card.id)}
-                      style={({ pressed }) => [
-                        styles.verticalCardTouchable,
-                        isSelected && styles.verticalCardTouchableSelected,
-                        pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] },
-                      ]}
-                    >
-                      <FocusCard
-                        orientation="landscape"
-                        width={304}
-                        height={192}
-                        designId={card.id}
-                        customDesign={card}
-                        credits={credits}
-                        cardholderName={sanitizedUserName}
-                        isSelected={isSelected}
-                        isApplied={isApplied}
-                      />
-
-                      {/* Prominent Floating Checkmark Badge when selected */}
-                      {isSelected && (
-                        <View style={styles.selectedBadgeFloating}>
-                          <Ionicons name="checkmark" size={17} color="#000000" />
-                        </View>
-                      )}
-
-                      {/* Current Card Indicator Pill */}
-                      {isApplied && (
-                        <View style={styles.currentBadgeFloating}>
-                          <Text style={styles.currentBadgeText}>CURRENT</Text>
-                        </View>
-                      )}
-                    </Pressable>
-
-                    <Text
-                      numberOfLines={1}
-                      style={[
-                        styles.verticalCardNameLabel,
-                        isSelected && styles.verticalCardNameLabelSelected,
-                      ]}
-                    >
-                      {card.name}
-                    </Text>
-                  </View>
-                );
-              })}
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={styles.spotlightName}>{selectedCard.name}</Text>
+              <Text style={styles.spotlightDesc}>{selectedCard.description}</Text>
             </View>
           </View>
-        )}
+        </View>
+
+        {/* Section Divider */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>ALL 17 CARDS</Text>
+          <Text style={styles.sectionCount}>17 Editions</Text>
+        </View>
+
+        {/* Full Gallery Grid (Cards 1 to 18) */}
+        <View style={styles.cardsGrid}>
+          {CARD_DESIGNS.map((card) => {
+            const isSelected = card.id === selectedId;
+            const isApplied = card.id === activeCardId;
+            const isCard3 = card.cardNumber === 3;
+
+            return (
+              <Pressable
+                key={card.id}
+                onPress={() => handleSelect(card.id)}
+                style={({ pressed }) => [
+                  styles.cardTile,
+                  { width: gridItemWidth },
+                  isSelected && styles.cardTileSelected,
+                  pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] },
+                ]}
+              >
+                {/* Card Number Badge matching the reference image numbering */}
+                <View style={styles.cardTileHeader}>
+                  <View style={[styles.numberBadge, isSelected && styles.numberBadgeSelected]}>
+                    <Text style={[styles.numberBadgeText, isSelected && styles.numberBadgeTextSelected]}>
+                      {card.cardNumber}
+                    </Text>
+                  </View>
+                  <Text style={styles.cardTileTitle}>{card.name}</Text>
+                  {isCard3 && (
+                    <View style={styles.defaultPill}>
+                      <Text style={styles.defaultPillText}>FREE DEFAULT</Text>
+                    </View>
+                  )}
+                  {isApplied && (
+                    <View style={styles.appliedPill}>
+                      <Text style={styles.appliedPillText}>CURRENT</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Card Render */}
+                <View style={styles.cardRenderWrap}>
+                  <FocusCard
+                    width={gridItemWidth}
+                    height={gridCardHeight}
+                    designId={card.id}
+                    customDesign={card}
+                    credits={credits}
+                    cardholderName={sanitizedUserName}
+                    isSelected={isSelected}
+                    isApplied={isApplied}
+                  />
+                </View>
+
+                {/* Subtitle / Description */}
+                <Text style={styles.cardTileDesc}>{card.description}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </ScrollView>
 
-      {/* Persistent Bottom Action: "Choose this" */}
+      {/* Persistent Bottom Action: "Apply Card" / "Current Card" */}
       <View
         style={[
           styles.bottomActionContainer,
@@ -312,7 +211,7 @@ export default function CardCustomizationScreen() {
               isCurrentlyApplied && styles.chooseBtnTextApplied,
             ]}
           >
-            {isCurrentlyApplied ? 'Current card' : `Choose this`}
+            {isCurrentlyApplied ? 'Current card applied' : `Apply Card #${selectedCard.cardNumber}`}
           </Text>
         </Pressable>
       </View>
@@ -323,14 +222,16 @@ export default function CardCustomizationScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#0A0A0E',
   },
   navHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 18,
-    paddingBottom: 6,
-    zIndex: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#18181C',
   },
   backBtn: {
     width: 38,
@@ -342,180 +243,226 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#27272A',
   },
+  headerTitle: {
+    color: '#FFFFFF',
+    fontFamily: fonts.bold,
+    fontSize: 17,
+  },
   scrollContent: {
-    paddingTop: 8,
+    paddingTop: 16,
   },
   titleSection: {
-    paddingHorizontal: 22,
-    marginBottom: 28,
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
   mainTitle: {
     color: '#FFFFFF',
     fontFamily: fonts.bold,
-    fontSize: 32,
-    letterSpacing: -0.8,
-    marginBottom: 6,
+    fontSize: 30,
+    letterSpacing: -0.6,
+    marginBottom: 4,
   },
   subTitle: {
     color: '#9CA3AF',
     fontFamily: fonts.regular,
-    fontSize: 15,
-    letterSpacing: -0.2,
+    fontSize: 14,
   },
-  categorySection: {
+
+  // Spotlight Preview
+  spotlightContainer: {
+    marginHorizontal: 20,
+    backgroundColor: '#131318',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: '#222228',
+    padding: 18,
     marginBottom: 28,
   },
-  categoryHeader: {
-    paddingHorizontal: 22,
+  spotlightLabel: {
+    color: '#71717A',
+    fontFamily: fonts.bold,
+    fontSize: 11,
+    letterSpacing: 0.8,
     marginBottom: 12,
   },
-  categoryTitle: {
-    color: '#FFFFFF',
-    fontFamily: fonts.bold,
-    fontSize: 18,
-    letterSpacing: -0.4,
-    marginBottom: 4,
-  },
-  categoryDesc: {
-    color: '#71717A',
-    fontFamily: fonts.regular,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  horizontalRow: {
-    paddingHorizontal: 22,
-    gap: 14,
-  },
-  cardItemWrap: {
-    alignItems: 'center',
-    width: 204,
-  },
-  cardNameLabel: {
-    color: '#A1A1AA',
-    fontFamily: fonts.medium,
-    fontSize: 12,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  cardNameLabelSelected: {
-    color: '#FFFFFF',
-    fontFamily: fonts.bold,
-  },
-  bottomActionContainer: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
-    bottom: 0,
-    alignItems: 'center',
-  },
-  chooseBtn: {
-    width: '100%',
-    height: 52,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 999,
+  spotlightCardWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.6,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
-  chooseBtnApplied: {
-    backgroundColor: '#1E1E22',
-    borderColor: '#2E2E34',
+  spotlightMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#1F1F26',
   },
-  chooseBtnText: {
+  spotlightNumberBadge: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  spotlightNumberText: {
     color: '#000000',
     fontFamily: fonts.bold,
-    fontSize: 15.5,
-    letterSpacing: -0.2,
+    fontSize: 14,
   },
-  chooseBtnTextApplied: {
-    color: '#9CA3AF',
+  spotlightName: {
+    color: '#FFFFFF',
+    fontFamily: fonts.bold,
+    fontSize: 16,
   },
-  // Vertical Classic Cards
-  verticalClassicSection: {
-    marginBottom: 20,
-  },
-  categorySub: {
-    color: colors.gray,
+  spotlightDesc: {
+    color: '#8E8E93',
     fontFamily: fonts.regular,
-    fontSize: 13,
+    fontSize: 12.5,
     marginTop: 2,
   },
-  verticalCardList: {
+
+  // Section Header
+  sectionHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    justifyContent: 'space-between',
+    paddingHorizontal: 22,
+    marginBottom: 14,
   },
-  verticalCardItem: {
+  sectionTitle: {
+    color: '#71717A',
+    fontFamily: fonts.bold,
+    fontSize: 11.5,
+    letterSpacing: 0.8,
+  },
+  sectionCount: {
+    color: '#52525B',
+    fontFamily: fonts.medium,
+    fontSize: 12,
+  },
+
+  // Cards Grid
+  cardsGrid: {
+    paddingHorizontal: 20,
     alignItems: 'center',
-    marginBottom: 22,
+    gap: 22,
   },
-  verticalCardTouchable: {
-    borderRadius: 24,
-    borderWidth: 2.5,
-    borderColor: 'transparent',
-    padding: 3,
-    position: 'relative',
+  cardTile: {
+    backgroundColor: '#131317',
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: '#202026',
+    padding: 14,
   },
-  verticalCardTouchableSelected: {
+  cardTileSelected: {
     borderColor: '#FFFFFF',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#17171D',
     shadowColor: '#FFFFFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  selectedBadgeFloating: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
+  cardTileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  numberBadge: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#222228',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
-    elevation: 8,
-    zIndex: 10,
+    marginRight: 10,
   },
-  currentBadgeFloating: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.82)',
+  numberBadgeSelected: {
+    backgroundColor: '#FFFFFF',
+  },
+  numberBadgeText: {
+    color: '#FFFFFF',
+    fontFamily: fonts.bold,
+    fontSize: 13,
+  },
+  numberBadgeTextSelected: {
+    color: '#000000',
+  },
+  cardTileTitle: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontFamily: fonts.bold,
+    fontSize: 15,
+  },
+  defaultPill: {
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
-    zIndex: 10,
+    borderColor: 'rgba(59, 130, 246, 0.4)',
+    marginRight: 6,
   },
-  currentBadgeText: {
-    color: '#FFFFFF',
+  defaultPillText: {
+    color: '#60A5FA',
     fontFamily: fonts.bold,
-    fontSize: 9,
-    letterSpacing: 0.8,
+    fontSize: 9.5,
+    letterSpacing: 0.4,
   },
-  verticalCardNameLabel: {
+  appliedPill: {
+    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.4)',
+  },
+  appliedPillText: {
+    color: '#4ADE80',
+    fontFamily: fonts.bold,
+    fontSize: 9.5,
+    letterSpacing: 0.4,
+  },
+  cardRenderWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardTileDesc: {
+    color: '#8E8E93',
+    fontFamily: fonts.regular,
+    fontSize: 12.5,
+    marginTop: 10,
+    lineHeight: 17,
+  },
+
+  // Bottom Floating Button
+  bottomActionContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(10, 10, 14, 0.92)',
+    borderTopWidth: 1,
+    borderTopColor: '#1A1A20',
+  },
+  chooseBtn: {
+    backgroundColor: '#FFFFFF',
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chooseBtnApplied: {
+    backgroundColor: '#1E1E24',
+    borderWidth: 1,
+    borderColor: '#2E2E36',
+  },
+  chooseBtnText: {
+    color: '#000000',
+    fontFamily: fonts.bold,
+    fontSize: 16,
+  },
+  chooseBtnTextApplied: {
     color: '#A1A1AA',
-    fontFamily: fonts.medium,
-    fontSize: 13,
-    letterSpacing: -0.1,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  verticalCardNameLabelSelected: {
-    color: '#FFFFFF',
-    fontFamily: fonts.bold,
-    fontSize: 14,
   },
 });
-

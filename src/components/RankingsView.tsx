@@ -115,18 +115,17 @@ export default function RankingsView({ onOpenSettings }: { onOpenSettings?: () =
 
   // Base focus time for current user (convert credits earned / active focus)
   const userFocusMinutes = Math.max(15, credits);
-  const nowMs = Date.now();
 
   // Community participants with names (handles removed)
   const defaultParticipants: LeaderboardUser[] = useMemo(() => [
-    { id: 'u1', name: 'Malo', focusMinutes: 4200, achievedAt: nowMs - 500000, cardVariant: 'gold' },
-    { id: 'u2', name: 'Tonkster', focusMinutes: 3220, achievedAt: nowMs - 400000, cardVariant: 'silver' },
-    { id: 'u3', name: 'Discipline', focusMinutes: 2700, achievedAt: nowMs - 300000, cardVariant: 'bronze' },
-    { id: 'u4', name: 'Uplink', focusMinutes: 2310, achievedAt: nowMs - 200000, cardVariant: 'dark' },
-    { id: 'u5', name: 'Rex', focusMinutes: 2155, achievedAt: nowMs - 150000, cardVariant: 'silver' },
-    { id: 'u6', name: 'Climb', focusMinutes: 2140, achievedAt: nowMs - 120000, cardVariant: 'dark' },
+    { id: 'u1', name: 'Malo', focusMinutes: 4200, achievedAt: 1000, cardVariant: 'gold' },
+    { id: 'u2', name: 'Tonkster', focusMinutes: 3220, achievedAt: 2000, cardVariant: 'silver' },
+    { id: 'u3', name: 'Discipline', focusMinutes: 2700, achievedAt: 3000, cardVariant: 'bronze' },
+    { id: 'u4', name: 'Uplink', focusMinutes: 2310, achievedAt: 4000, cardVariant: 'dark' },
+    { id: 'u5', name: 'Rex', focusMinutes: 2155, achievedAt: 5000, cardVariant: 'silver' },
+    { id: 'u6', name: 'Climb', focusMinutes: 2140, achievedAt: 6000, cardVariant: 'dark' },
     // Exact tie with reserve9301 to prove tie-breaker rule: newest achieved gets leader!
-    { id: 'u7', name: 'Reserve', focusMinutes: 2140, achievedAt: nowMs - 100000, cardVariant: 'user' },
+    { id: 'u7', name: 'Reserve', focusMinutes: 2140, achievedAt: 7000, cardVariant: 'user' },
   ], []);
 
   // Compute leaderboard with sorting & tie-breaker rule
@@ -135,7 +134,7 @@ export default function RankingsView({ onOpenSettings }: { onOpenSettings?: () =
       id: 'current-user',
       name: displayName,
       focusMinutes: userFocusMinutes,
-      achievedAt: nowMs, // latest achieved
+      achievedAt: 9999999999, // latest achieved
       isCurrentUser: true,
       cardVariant: 'user',
     };

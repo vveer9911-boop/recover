@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   View,
@@ -46,15 +46,17 @@ export default function EditProfileModal({ visible, onClose }: EditProfileModalP
   const [handle, setHandle] = useState(userHandle || '');
   const [bio, setBio] = useState(userBio || '');
   const [selectedAvatar, setSelectedAvatar] = useState(userAvatarIndex || 0);
+  const [prevVisible, setPrevVisible] = useState(visible);
 
-  useEffect(() => {
+  if (prevVisible !== visible) {
+    setPrevVisible(visible);
     if (visible) {
       setName(userName || '');
       setHandle(userHandle || '');
       setBio(userBio || '');
       setSelectedAvatar(userAvatarIndex || 0);
     }
-  }, [visible, userName, userHandle, userBio, userAvatarIndex]);
+  }
 
   const handleSave = () => {
     if (name.trim()) setUserName(name.trim());

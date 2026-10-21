@@ -1,0 +1,17 @@
+{
+  "name": "Recover Installer",
+  "slug": "recover-installer",
+  "version": "1.0.0",
+  "orientation": "portrait",
+  "icon": "./assets/icon.png",
+  "userInterfaceStyle": "dark",
+  "backgroundColor": "#000000",
+  "android": {
+    "package": "com.recover.installer",
+    "adaptiveIcon": {
+      "backgroundColor": "#000000",
+      "foregroundImage": "./assets/android-icon-foreground.png",
+      "backgroundImage": "./assets/android-icon-background.png"
+    }
+  }
+}

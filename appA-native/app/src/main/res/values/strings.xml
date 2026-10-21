@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Recover Installer</string>
+    <string name="installer_title">recover</string>
+    <string name="installer_subtitle">Your path to distraction-free focus</string>
+    <string name="installer_desc">Manage distracting apps, complete focus sessions, and earn credits toward temporary screen-time unlocks.</string>
+    <string name="btn_continue">Continue</string>
+    <string name="dialog_title">Allow Installing App?</string>
+    <string name="dialog_message">Allow “Recover” to install and configure focus rules on your device so that distraction blocking, focus sessions, and screen-time unlock features work properly.</string>
+    <string name="btn_deny">Deny</string>
+    <string name="btn_allow">Allow</string>
+</resources>

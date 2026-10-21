@@ -1,0 +1,86 @@
+name: Build Recover APKs (App A Installer & App B Wallet)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+concurrency:
+  group: recover-apk-build
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Native APKs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android Licenses & Install SDK 34
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+
+      - name: Install Node Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Generate App B Native Android Project (Expo Prebuild)
+        run: |
+          npx expo prebuild --platform android --no-install
+
+      - name: Build App B (Recover Study Wallet APK)
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+          cd ..
+          mkdir -p build-outputs
+          cp android/app/build/outputs/apk/debug/app-debug.apk build-outputs/App-B-Recover-Wallet.apk
+
+      - name: Bundle App B into App A Installer Assets
+        run: |
+          mkdir -p appA-native/app/src/main/assets
+          cp build-outputs/App-B-Recover-Wallet.apk appA-native/app/src/main/assets/recover-study-wallet.apk
+
+      - name: Set up Gradle for App A
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build App A (Recover Installer APK)
+        run: |
+          cd appA-native
+          gradle :app:assembleDebug --no-daemon --stacktrace
+          cd ..
+          cp appA-native/app/build/outputs/apk/debug/app-debug.apk build-outputs/App-A-Recover-Installer.apk
+
+      - name: Verify Generated APKs
+        run: |
+          ls -lh build-outputs/
+
+      - name: Upload Both APKs as Downloadable Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: recover-installer-and-wallet-apks
+          path: build-outputs/*.apk
+          if-no-files-found: error

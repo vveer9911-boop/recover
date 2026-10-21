@@ -27,532 +27,552 @@ function CardPatternRendererComponent({
   const W = isPortrait ? 120 : 280;
   const H = isPortrait ? 186 : 176;
 
-  const strokeColor = palette.highlightColor || 'rgba(255, 255, 255, 0.18)';
-  const shadowStroke = 'rgba(0, 0, 0, 0.35)';
-  const accent = palette.accentColor || palette.chevronColor || '#38BDF8';
-
   const renderContent = () => {
     switch (patternType) {
       // ---------------------------------------------------------------------
-      // 1. CLASSIC COLLECTION (Exactly 6 Variants)
+      // 1. NATURAL WOOD
       // ---------------------------------------------------------------------
-      case 'classic-obsidian-black': {
-        const inset = isPortrait ? 6 : 9;
-        const subStroke = 'rgba(255, 255, 255, 0.08)';
+      case 'wood-grain': {
+        const grain1 = 'rgba(145, 95, 45, 0.16)';
+        const grain2 = 'rgba(185, 135, 75, 0.22)';
+        const highlight = 'rgba(255, 255, 255, 0.22)';
         return (
           <G>
-            {/* Satin edge border reflection */}
+            <Path
+              d={isPortrait
+                ? "M0 25 Q35 35 70 20 T120 30"
+                : "M0 32 Q70 45 140 28 T280 40"}
+              stroke={grain1}
+              strokeWidth={1.8}
+              fill="none"
+            />
+            <Path
+              d={isPortrait
+                ? "M0 55 Q40 45 80 60 T120 50"
+                : "M0 68 Q80 54 160 76 T280 62"}
+              stroke={grain2}
+              strokeWidth={1.4}
+              fill="none"
+            />
+            <Path
+              d={isPortrait
+                ? "M0 90 Q30 110 75 88 T120 102"
+                : "M0 108 Q65 130 155 98 T280 116"}
+              stroke={grain1}
+              strokeWidth={2.0}
+              fill="none"
+            />
+            <Path
+              d={isPortrait
+                ? "M0 125 Q45 115 85 135 T120 120"
+                : "M0 144 Q95 130 185 152 T280 138"}
+              stroke={grain2}
+              strokeWidth={1.5}
+              fill="none"
+            />
+            <Path
+              d={isPortrait
+                ? "M0 160 Q35 150 70 168 T120 155"
+                : "M0 80 Q90 92 180 72 T280 88"}
+              stroke={highlight}
+              strokeWidth={1.0}
+              fill="none"
+            />
+          </G>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      // 2. OBSIDIAN BLACK
+      // ---------------------------------------------------------------------
+      case 'matte-black':
+      case 'classic-obsidian-black': {
+        const inset = isPortrait ? 6 : 9;
+        return (
+          <G>
             <Rect
               x={inset}
               y={inset}
               width={W - inset * 2}
               height={H - inset * 2}
-              rx={isPortrait ? 10 : 12}
-              stroke={subStroke}
+              rx={isPortrait ? 10 : 14}
+              stroke="rgba(255, 255, 255, 0.08)"
               strokeWidth={0.8}
               fill="none"
             />
-            {/* Precision milled hairline accents */}
-            <Path
-              d={isPortrait ? "M0 45 H55 L65 32 H120" : "M0 50 H128 L148 34 H280"}
-              stroke="rgba(0, 0, 0, 0.6)"
-              strokeWidth={2.4}
+          </G>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      // BRUSHED STEEL / TITANIUM (Signature brushed grain for all cards)
+      // ---------------------------------------------------------------------
+      case 'brushed-steel':
+      case 'classic-titanium': {
+        const lines = isPortrait
+          ? [8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176]
+          : [8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168];
+        const isDark = palette.textColor === '#FFFFFF';
+        const strokeLight = isDark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(255, 255, 255, 0.32)';
+        const strokeDark = isDark ? 'rgba(0, 0, 0, 0.22)' : 'rgba(0, 0, 0, 0.07)';
+        return (
+          <G>
+            {lines.map((y, idx) => (
+              <React.Fragment key={y}>
+                <Line
+                  x1={0}
+                  y1={y}
+                  x2={W}
+                  y2={y}
+                  stroke={idx % 2 === 0 ? strokeLight : strokeDark}
+                  strokeWidth={0.75}
+                />
+              </React.Fragment>
+            ))}
+          </G>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      // 4. CHAMPAGNE GOLD
+      // ---------------------------------------------------------------------
+      case 'satin-gold':
+      case 'classic-gold': {
+        const inset = isPortrait ? 6 : 9;
+        return (
+          <G>
+            <Rect
+              x={inset}
+              y={inset}
+              width={W - inset * 2}
+              height={H - inset * 2}
+              rx={isPortrait ? 10 : 14}
+              stroke="rgba(255, 255, 255, 0.35)"
+              strokeWidth={0.8}
               fill="none"
             />
             <Path
-              d={isPortrait ? "M0 45 H55 L65 32 H120" : "M0 50 H128 L148 34 H280"}
+              d={isPortrait ? "M0 0 L120 186" : "M0 0 L280 176"}
+              stroke="rgba(255, 255, 255, 0.18)"
+              strokeWidth={30}
+              strokeLinecap="round"
+            />
+          </G>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      // 5. ROSE GOLD
+      // ---------------------------------------------------------------------
+      case 'metallic-rosegold':
+      case 'classic-rose-gold': {
+        const inset = isPortrait ? 6 : 9;
+        return (
+          <G>
+            <Rect
+              x={inset}
+              y={inset}
+              width={W - inset * 2}
+              height={H - inset * 2}
+              rx={isPortrait ? 10 : 14}
+              stroke="rgba(255, 255, 255, 0.28)"
+              strokeWidth={0.8}
+              fill="none"
+            />
+            <Path
+              d={isPortrait ? "M20 0 L140 160" : "M40 0 L280 140"}
+              stroke="rgba(255, 255, 255, 0.22)"
+              strokeWidth={24}
+              strokeLinecap="round"
+            />
+          </G>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      // 6. METALLIC LILAC
+      // ---------------------------------------------------------------------
+      case 'metallic-lilac':
+      case 'classic-lavender': {
+        const inset = isPortrait ? 6 : 9;
+        return (
+          <G>
+            <Rect
+              x={inset}
+              y={inset}
+              width={W - inset * 2}
+              height={H - inset * 2}
+              rx={isPortrait ? 10 : 14}
+              stroke="rgba(255, 255, 255, 0.3)"
+              strokeWidth={0.8}
+              fill="none"
+            />
+            <Path
+              d={isPortrait ? "M0 40 L120 160" : "M0 40 L280 160"}
+              stroke="rgba(255, 255, 255, 0.18)"
+              strokeWidth={20}
+            />
+          </G>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      // 7. CORAL BLUSH
+      // ---------------------------------------------------------------------
+      case 'satin-blush': {
+        const inset = isPortrait ? 6 : 9;
+        return (
+          <G>
+            <Rect
+              x={inset}
+              y={inset}
+              width={W - inset * 2}
+              height={H - inset * 2}
+              rx={isPortrait ? 10 : 14}
+              stroke="rgba(255, 255, 255, 0.26)"
+              strokeWidth={0.8}
+              fill="none"
+            />
+          </G>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      // 8. SAPPHIRE NAVY
+      // ---------------------------------------------------------------------
+      case 'metallic-navy': {
+        const inset = isPortrait ? 6 : 9;
+        return (
+          <G>
+            <Rect
+              x={inset}
+              y={inset}
+              width={W - inset * 2}
+              height={H - inset * 2}
+              rx={isPortrait ? 10 : 14}
+              stroke="rgba(140, 190, 255, 0.22)"
+              strokeWidth={0.8}
+              fill="none"
+            />
+            <Path
+              d={isPortrait ? "M-10 20 L130 160" : "M-20 30 L290 150"}
+              stroke="rgba(255, 255, 255, 0.14)"
+              strokeWidth={28}
+            />
+          </G>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      // 9. PEARL IVORY
+      // ---------------------------------------------------------------------
+      case 'satin-ivory': {
+        const inset = isPortrait ? 6 : 9;
+        return (
+          <G>
+            <Rect
+              x={inset}
+              y={inset}
+              width={W - inset * 2}
+              height={H - inset * 2}
+              rx={isPortrait ? 10 : 14}
+              stroke="rgba(255, 255, 255, 0.55)"
+              strokeWidth={0.9}
+              fill="none"
+            />
+          </G>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      // 10. SAGE GREEN
+      // ---------------------------------------------------------------------
+      case 'metallic-sage': {
+        const inset = isPortrait ? 6 : 9;
+        return (
+          <G>
+            <Rect
+              x={inset}
+              y={inset}
+              width={W - inset * 2}
+              height={H - inset * 2}
+              rx={isPortrait ? 10 : 14}
+              stroke="rgba(255, 255, 255, 0.28)"
+              strokeWidth={0.8}
+              fill="none"
+            />
+          </G>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      // 11. FOREST OLIVE
+      // ---------------------------------------------------------------------
+      case 'matte-olive': {
+        const inset = isPortrait ? 6 : 9;
+        return (
+          <G>
+            <Rect
+              x={inset}
+              y={inset}
+              width={W - inset * 2}
+              height={H - inset * 2}
+              rx={isPortrait ? 10 : 14}
               stroke="rgba(255, 255, 255, 0.14)"
               strokeWidth={0.8}
               fill="none"
-              transform="translate(0, 0.8)"
             />
-            <Path
-              d={isPortrait ? "M0 115 H55 L65 128 H120" : "M0 118 H130 L150 136 H280"}
-              stroke="rgba(0, 0, 0, 0.6)"
-              strokeWidth={2.4}
-              fill="none"
-            />
-            <Path
-              d={isPortrait ? "M0 115 H55 L65 128 H120" : "M0 118 H130 L150 136 H280"}
-              stroke="rgba(255, 255, 255, 0.12)"
+          </G>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      // 12. BRUSHED PLATINUM
+      // ---------------------------------------------------------------------
+      case 'brushed-platinum':
+      case 'classic-arctic-silver': {
+        const lines = isPortrait
+          ? [15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165]
+          : [14, 28, 42, 56, 70, 84, 98, 112, 126, 140, 154, 168];
+        return (
+          <G>
+            {lines.map((y, idx) => (
+              <Line
+                key={y}
+                x1={0}
+                y1={y}
+                x2={W}
+                y2={y}
+                stroke={idx % 2 === 0 ? "rgba(255, 255, 255, 0.28)" : "rgba(160, 170, 185, 0.22)"}
+                strokeWidth={0.7}
+              />
+            ))}
+          </G>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      // 13. ICE SKY BLUE
+      // ---------------------------------------------------------------------
+      case 'metallic-skyblue': {
+        const inset = isPortrait ? 6 : 9;
+        return (
+          <G>
+            <Rect
+              x={inset}
+              y={inset}
+              width={W - inset * 2}
+              height={H - inset * 2}
+              rx={isPortrait ? 10 : 14}
+              stroke="rgba(255, 255, 255, 0.35)"
               strokeWidth={0.8}
               fill="none"
-              transform="translate(0, 0.8)"
             />
-            {/* Subtle matte texture circles */}
-            {(!isPortrait ? [70, 130, 190, 240] : [35, 60, 85]).map((x) => (
-              <Circle key={x} cx={x} cy={isPortrait ? 85 : 88} r={1.2} fill="rgba(255, 255, 255, 0.12)" />
-            ))}
+            <Path
+              d={isPortrait ? "M0 10 L120 150" : "M0 10 L280 150"}
+              stroke="rgba(255, 255, 255, 0.22)"
+              strokeWidth={24}
+            />
           </G>
         );
       }
 
-      case 'classic-gold': {
+      // ---------------------------------------------------------------------
+      // 14. CABERNET BURGUNDY
+      // ---------------------------------------------------------------------
+      case 'metallic-burgundy': {
         const inset = isPortrait ? 6 : 9;
-        const goldHighlight = 'rgba(255, 255, 255, 0.55)';
-        const goldShadow = 'rgba(120, 100, 65, 0.35)';
         return (
           <G>
-            {/* Inset metallic border */}
             <Rect
               x={inset}
               y={inset}
               width={W - inset * 2}
               height={H - inset * 2}
-              rx={isPortrait ? 10 : 12}
-              stroke={goldHighlight}
-              strokeWidth={0.7}
-              fill="none"
-              opacity={0.65}
-            />
-            {/* Satin champagne reflection curves */}
-            <Path
-              d={isPortrait ? "M0 38 H58 L72 24 H120" : "M0 44 H136 L158 24 H280"}
-              stroke={goldHighlight}
-              strokeWidth={1}
-              fill="none"
-              opacity={0.75}
-            />
-            <Path
-              d={isPortrait ? "M0 120 H55 L70 136 H120" : "M0 126 H125 L146 148 H280"}
-              stroke={goldShadow}
-              strokeWidth={1.2}
+              rx={isPortrait ? 10 : 14}
+              stroke="rgba(255, 255, 255, 0.16)"
+              strokeWidth={0.8}
               fill="none"
             />
-            {/* Fine milled hairline pinstripes */}
-            {[26, 34, 42].map((y) => (
-              <Line
-                key={y}
-                x1={isPortrait ? 75 : 180}
-                y1={isPortrait ? y + 5 : y}
-                x2={W - 14}
-                y2={isPortrait ? y + 5 : y}
-                stroke={goldHighlight}
-                strokeWidth={0.5}
-                strokeDasharray="4 2"
-                opacity={0.5}
-              />
-            ))}
           </G>
         );
       }
 
-      case 'classic-rose-gold': {
+      // ---------------------------------------------------------------------
+      // 15. MOCHA BRONZE
+      // ---------------------------------------------------------------------
+      case 'metallic-bronze': {
         const inset = isPortrait ? 6 : 9;
-        const roseHighlight = 'rgba(255, 255, 255, 0.5)';
-        const roseShadow = 'rgba(145, 80, 95, 0.3)';
-        return (
-          <G>
-            {/* Inset metallic frame */}
-            <Rect
-              x={inset}
-              y={inset}
-              width={W - inset * 2}
-              height={H - inset * 2}
-              rx={isPortrait ? 10 : 12}
-              stroke={roseHighlight}
-              strokeWidth={0.7}
-              fill="none"
-              opacity={0.65}
-            />
-            {/* Diagonal satin highlight reflection */}
-            <Path
-              d={isPortrait ? "M0 40 H56 L70 26 H120" : "M0 42 H130 L152 22 H280"}
-              stroke={roseHighlight}
-              strokeWidth={1}
-              fill="none"
-              opacity={0.8}
-            />
-            <Path
-              d={isPortrait ? "M0 122 H54 L68 138 H120" : "M0 128 H124 L146 150 H280"}
-              stroke={roseShadow}
-              strokeWidth={1.2}
-              fill="none"
-            />
-            {/* Precision satin luster lines */}
-            {[25, 33].map((y) => (
-              <Line
-                key={y}
-                x1={isPortrait ? 75 : 175}
-                y1={isPortrait ? y + 6 : y}
-                x2={W - 14}
-                y2={isPortrait ? y + 6 : y}
-                stroke={roseHighlight}
-                strokeWidth={0.5}
-                strokeDasharray="4 3"
-                opacity={0.55}
-              />
-            ))}
-          </G>
-        );
-      }
-
-      case 'classic-lavender': {
-        const inset = isPortrait ? 6 : 9;
-        const lavenderHighlight = 'rgba(255, 255, 255, 0.6)';
-        const lavenderShadow = 'rgba(110, 100, 130, 0.3)';
-        return (
-          <G>
-            {/* Subtle inset rim */}
-            <Rect
-              x={inset}
-              y={inset}
-              width={W - inset * 2}
-              height={H - inset * 2}
-              rx={isPortrait ? 10 : 12}
-              stroke={lavenderHighlight}
-              strokeWidth={0.75}
-              fill="none"
-              opacity={0.6}
-            />
-            {/* Light lavender satin sheen path */}
-            <Path
-              d={isPortrait ? "M0 38 H60 L74 24 H120" : "M0 42 H134 L156 22 H280"}
-              stroke={lavenderHighlight}
-              strokeWidth={1}
-              fill="none"
-              opacity={0.8}
-            />
-            <Path
-              d={isPortrait ? "M0 124 H56 L70 138 H120" : "M0 126 H128 L150 148 H280"}
-              stroke={lavenderShadow}
-              strokeWidth={1.2}
-              fill="none"
-            />
-            {/* Satin hairline accents */}
-            {[26, 34].map((y) => (
-              <Line
-                key={y}
-                x1={isPortrait ? 78 : 180}
-                y1={isPortrait ? y + 6 : y}
-                x2={W - 14}
-                y2={isPortrait ? y + 6 : y}
-                stroke={lavenderHighlight}
-                strokeWidth={0.5}
-                strokeDasharray="3 3"
-                opacity={0.55}
-              />
-            ))}
-          </G>
-        );
-      }
-
-      case 'classic-titanium': {
-        if (isPortrait) {
-          return (
-            <G>
-              <Path d="M0 45 H55 L65 30 H120" stroke={shadowStroke} strokeWidth={2.5} fill="none" />
-              <Path d="M0 45 H55 L65 30 H120" stroke={strokeColor} strokeWidth={0.8} fill="none" />
-              <Path d="M0 115 H55 L65 130 H120" stroke={shadowStroke} strokeWidth={2.5} fill="none" />
-              <Path d="M0 115 H55 L65 130 H120" stroke={strokeColor} strokeWidth={0.8} fill="none" />
-              <Path d="M0 145 H80 L90 155 H120" stroke={strokeColor} strokeWidth={0.6} fill="none" />
-              <Path d="M60 50 H115 V68 H60 Z" stroke={strokeColor} strokeWidth={0.6} fill="none" />
-              <Circle cx={65} cy={50} r={1} fill={strokeColor} />
-              <Circle cx={110} cy={50} r={1} fill={strokeColor} />
-              <Circle cx={65} cy={68} r={1} fill={strokeColor} />
-              <Circle cx={110} cy={68} r={1} fill={strokeColor} />
-            </G>
-          );
-        }
-        return (
-          <G>
-            <Path d="M0 50 H128 L148 34 H280" stroke={shadowStroke} strokeWidth={3} fill="none" />
-            <Path d="M0 50 H128 L148 34 H280" stroke={strokeColor} strokeWidth={0.8} fill="none" transform="translate(0, 1)" />
-            <Path d="M0 118 H130 L150 136 H280" stroke={shadowStroke} strokeWidth={3} fill="none" />
-            <Path d="M0 118 H130 L150 136 H280" stroke={strokeColor} strokeWidth={0.8} fill="none" transform="translate(0, 1)" />
-            <Path d="M0 142 H190 L205 150 H280" stroke={strokeColor} strokeWidth={0.8} fill="none" />
-            <Path d="M144 62 H274 V82 H144 Z" stroke={strokeColor} strokeWidth={0.8} fill="none" />
-            <Path d="M144 118 H274 V136 H144 Z" stroke={strokeColor} strokeWidth={0.8} fill="none" />
-            {[60, 120, 180, 240].map((x) => (
-              <Circle key={x} cx={x} cy={90} r={1.2} fill={strokeColor} />
-            ))}
-          </G>
-        );
-      }
-
-      case 'classic-arctic-silver': {
-        const pStroke = 'rgba(0,0,0,0.14)';
-        const pHi = 'rgba(255,255,255,0.7)';
-        return (
-          <G>
-            <Path d={isPortrait ? "M0 35 H60 L75 20 H120" : "M0 45 H140 L160 25 H280"} stroke={pStroke} strokeWidth={2} fill="none" />
-            <Path d={isPortrait ? "M0 35 H60 L75 20 H120" : "M0 45 H140 L160 25 H280"} stroke={pHi} strokeWidth={1} fill="none" transform="translate(0,1)" />
-            <Path d={isPortrait ? "M0 125 H60 L75 140 H120" : "M0 120 H130 L150 140 H280"} stroke={pStroke} strokeWidth={2} fill="none" />
-            <Path d={isPortrait ? "M0 125 H60 L75 140 H120" : "M0 120 H130 L150 140 H280"} stroke={pHi} strokeWidth={1} fill="none" transform="translate(0,1)" />
-            {[20, 45, 70, 95].map((y) => (
-              <Line key={y} x1={isPortrait ? 80 : 180} y1={y} x2={W - 10} y2={y} stroke={pStroke} strokeWidth={0.6} strokeDasharray="3 3" />
-            ))}
-          </G>
-        );
-      }
-
-      // ---------------------------------------------------------------------
-      // 2. WEAVE COLLECTION
-      // ---------------------------------------------------------------------
-      case 'weave-diagonal':
-      case 'weave-tonal':
-      case 'weave-threads': {
-        const step = isPortrait ? 12 : 18;
-        const count = isPortrait ? 24 : 32;
-        return (
-          <G opacity={0.65}>
-            {Array.from({ length: count }).map((_, i) => {
-              const offset = (i - 10) * step;
-              return (
-                <G key={i}>
-                  <Line x1={offset} y1={0} x2={offset + H} y2={H} stroke={strokeColor} strokeWidth={2.4} strokeLinecap="round" />
-                  <Line x1={offset + 4} y1={0} x2={offset + H + 4} y2={H} stroke={shadowStroke} strokeWidth={1.2} />
-                </G>
-              );
-            })}
-          </G>
-        );
-      }
-
-      case 'weave-interlocking':
-      case 'weave-tight':
-      case 'weave-offset':
-      case 'weave-crosshatch': {
-        const step = isPortrait ? 14 : 20;
-        const count = isPortrait ? 20 : 26;
-        return (
-          <G opacity={0.55}>
-            {Array.from({ length: count }).map((_, i) => {
-              const pos = (i - 6) * step;
-              return (
-                <G key={'d' + i}>
-                  <Line x1={pos} y1={0} x2={pos + H} y2={H} stroke={strokeColor} strokeWidth={1.8} />
-                  <Line x1={pos + H} y1={0} x2={pos} y2={H} stroke={strokeColor} strokeWidth={1.8} />
-                </G>
-              );
-            })}
-          </G>
-        );
-      }
-
-      // ---------------------------------------------------------------------
-      // 3. URBAN COLLECTION
-      // ---------------------------------------------------------------------
-      case 'urban-grid':
-      case 'urban-geometry':
-      case 'urban-rectangular': {
-        const gw = isPortrait ? 20 : 28;
-        const gh = isPortrait ? 22 : 24;
-        return (
-          <G opacity={0.45}>
-            {Array.from({ length: Math.ceil(W / gw) }).map((_, i) => (
-              <Line key={'vx' + i} x1={i * gw} y1={0} x2={i * gw} y2={H} stroke={strokeColor} strokeWidth={0.9} />
-            ))}
-            {Array.from({ length: Math.ceil(H / gh) }).map((_, i) => (
-              <Line key={'hy' + i} x1={0} y1={i * gh} x2={W} y2={i * gh} stroke={strokeColor} strokeWidth={0.9} />
-            ))}
-            <Rect x={isPortrait ? 20 : 60} y={isPortrait ? 40 : 40} width={isPortrait ? 80 : 160} height={isPortrait ? 90 : 80} stroke={accent} strokeWidth={1.5} fill="none" opacity={0.6} />
-          </G>
-        );
-      }
-
-      case 'urban-silhouette': {
-        return (
-          <G opacity={0.6}>
-            <Path
-              d={isPortrait
-                ? "M0 186 L0 130 H18 V105 H32 V125 H50 V95 H68 V115 H85 V85 H102 V110 H120 V186 Z"
-                : "M0 176 L0 120 H35 V90 H65 V110 H105 V75 H145 V100 H185 V70 H225 V95 H280 V176 Z"}
-              fill="rgba(0,0,0,0.4)"
-              stroke={strokeColor}
-              strokeWidth={1.2}
-            />
-          </G>
-        );
-      }
-
-      case 'urban-concrete':
-      case 'urban-steel':
-      case 'urban-structural': {
-        return (
-          <G opacity={0.5}>
-            {/* Structural trusses / beams */}
-            <Path d={isPortrait ? "M10 0 L110 186" : "M20 0 L260 176"} stroke={strokeColor} strokeWidth={2.4} />
-            <Path d={isPortrait ? "M110 0 L10 186" : "M260 0 L20 176"} stroke={strokeColor} strokeWidth={2.4} />
-            <Path d={isPortrait ? "M0 93 H120" : "M0 88 H280"} stroke={strokeColor} strokeWidth={1.5} />
-            {[20, 60, 100, 140, 180, 220].map((x) => (
-              <Circle key={x} cx={isPortrait ? (x * 0.4) + 10 : x} cy={H / 2} r={isPortrait ? 1.5 : 2.5} fill={strokeColor} />
-            ))}
-          </G>
-        );
-      }
-
-      // ---------------------------------------------------------------------
-      // 4. CARBON COLLECTION
-      // ---------------------------------------------------------------------
-      case 'carbon-fiber':
-      case 'carbon-graphite':
-      case 'carbon-black':
-      case 'carbon-surface':
-      case 'carbon-layered':
-      case 'carbon-steel':
-      case 'carbon-circuitry': {
-        const step = isPortrait ? 6 : 8;
-        const rows = Math.ceil(H / step);
-        const cols = Math.ceil(W / step);
-        return (
-          <G opacity={0.35}>
-            {Array.from({ length: rows }).map((_, r) =>
-              Array.from({ length: cols }).map((_, c) => {
-                if ((r + c) % 2 === 0) {
-                  return (
-                    <Rect
-                      key={`${r}-${c}`}
-                      x={c * step}
-                      y={r * step}
-                      width={step}
-                      height={step}
-                      fill={strokeColor}
-                      opacity={0.6}
-                    />
-                  );
-                }
-                return null;
-              })
-            )}
-          </G>
-        );
-      }
-
-      // ---------------------------------------------------------------------
-      // 5. CONTOUR COLLECTION
-      // ---------------------------------------------------------------------
-      case 'contour-elevation':
-      case 'contour-parallel':
-      case 'contour-terrain':
-      case 'contour-relief':
-      case 'contour-landscapes':
-      case 'contour-carved':
-      case 'contour-symmetrical': {
         const lines = isPortrait
+          ? [20, 45, 70, 95, 120, 145, 170]
+          : [20, 45, 70, 95, 120, 145, 170];
+        return (
+          <G>
+            {lines.map((y) => (
+              <Line
+                key={y}
+                x1={0}
+                y1={y}
+                x2={W}
+                y2={y}
+                stroke="rgba(255, 255, 255, 0.08)"
+                strokeWidth={0.8}
+              />
+            ))}
+            <Rect
+              x={inset}
+              y={inset}
+              width={W - inset * 2}
+              height={H - inset * 2}
+              rx={isPortrait ? 10 : 14}
+              stroke="rgba(255, 255, 255, 0.18)"
+              strokeWidth={0.8}
+              fill="none"
+            />
+          </G>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      // 16. RECYCLED KRAFT PAPER
+      // ---------------------------------------------------------------------
+      case 'kraft-paper': {
+        const flecks = isPortrait
           ? [
-              "M0 30 Q30 20 60 40 T120 30",
-              "M0 55 Q35 45 60 70 T120 50",
-              "M0 80 Q30 75 60 95 T120 75",
-              "M0 105 Q40 90 60 120 T120 100",
-              "M0 130 Q30 120 60 145 T120 125",
-              "M0 155 Q35 145 60 170 T120 150",
+              { x: 18, y: 35, r: 1.0 },
+              { x: 45, y: 72, r: 1.4 },
+              { x: 92, y: 48, r: 1.1 },
+              { x: 30, y: 125, r: 1.2 },
+              { x: 80, y: 140, r: 1.3 },
             ]
           : [
-              "M0 30 Q70 10 140 45 T280 30",
-              "M0 55 Q80 35 140 75 T280 50",
-              "M0 80 Q70 65 140 105 T280 75",
-              "M0 105 Q90 85 140 130 T280 100",
-              "M0 130 Q70 115 140 155 T280 125",
-              "M0 155 Q80 140 140 175 T280 150",
+              { x: 35, y: 38, r: 1.2 },
+              { x: 85, y: 78, r: 1.5 },
+              { x: 140, y: 42, r: 1.1 },
+              { x: 195, y: 110, r: 1.4 },
+              { x: 235, y: 65, r: 1.3 },
+              { x: 70, y: 135, r: 1.2 },
+              { x: 160, y: 145, r: 1.3 },
             ];
         return (
-          <G opacity={0.65}>
-            {lines.map((d, i) => (
-              <Path key={i} d={d} stroke={strokeColor} strokeWidth={1.3} fill="none" />
+          <G>
+            {flecks.map((f, i) => (
+              <Circle
+                key={i}
+                cx={f.x}
+                cy={f.y}
+                r={f.r}
+                fill="rgba(120, 85, 50, 0.28)"
+              />
             ))}
+            <Path
+              d={isPortrait ? "M10 80 Q60 90 110 75" : "M20 70 Q130 95 260 65"}
+              stroke="rgba(135, 95, 55, 0.16)"
+              strokeWidth={1.2}
+              fill="none"
+            />
           </G>
         );
       }
 
       // ---------------------------------------------------------------------
-      // 6. PRISM COLLECTION
+      // 17. BLACK MARBLE (Nero Marquina with organic white veining)
       // ---------------------------------------------------------------------
-      case 'prism-panels':
-      case 'prism-facets':
-      case 'prism-metallic':
-      case 'prism-triangular':
-      case 'prism-blocking':
-      case 'prism-reflective':
-      case 'prism-asymmetric': {
-        if (isPortrait) {
-          return (
-            <G opacity={0.6}>
-              <Path d="M0 0 L60 90 L0 186 Z" stroke={strokeColor} strokeWidth={1} fill="none" opacity={0.5} />
-              <Path d="M120 0 L60 90 L120 186 Z" stroke={strokeColor} strokeWidth={1} fill="none" opacity={0.5} />
-              <Path d="M60 0 L60 186" stroke={strokeColor} strokeWidth={1.2} />
-              <Path d="M0 90 H120" stroke={strokeColor} strokeWidth={1.2} />
-              <Path d="M30 45 L90 135" stroke={accent} strokeWidth={1.4} opacity={0.7} />
-              <Path d="M90 45 L30 135" stroke={accent} strokeWidth={1.4} opacity={0.7} />
-            </G>
-          );
-        }
+      case 'black-marble': {
+        const veinColor = 'rgba(255, 255, 255, 0.45)';
+        const veinSoft = 'rgba(200, 215, 230, 0.22)';
         return (
-          <G opacity={0.6}>
-            <Path d="M0 0 L140 88 L0 176 Z" stroke={strokeColor} strokeWidth={1} fill="none" opacity={0.5} />
-            <Path d="M280 0 L140 88 L280 176 Z" stroke={strokeColor} strokeWidth={1} fill="none" opacity={0.5} />
-            <Path d="M140 0 L140 176" stroke={strokeColor} strokeWidth={1.2} />
-            <Path d="M0 88 H280" stroke={strokeColor} strokeWidth={1.2} />
-            <Path d="M70 44 L210 132" stroke={accent} strokeWidth={1.5} opacity={0.7} />
-            <Path d="M210 44 L70 132" stroke={accent} strokeWidth={1.5} opacity={0.7} />
+          <G>
+            {/* Primary organic marble vein */}
+            <Path
+              d={isPortrait
+                ? "M15 0 C25 40, 5 70, 30 100 C50 125, 40 155, 80 186"
+                : "M30 0 C60 45, 20 80, 85 110 C140 135, 175 120, 250 176"}
+              stroke={veinColor}
+              strokeWidth={1.4}
+              fill="none"
+            />
+            {/* Vein branch 1 */}
+            <Path
+              d={isPortrait
+                ? "M30 100 C55 110, 85 105, 115 120"
+                : "M85 110 C130 115, 180 85, 230 95"}
+              stroke={veinSoft}
+              strokeWidth={0.9}
+              fill="none"
+            />
+            {/* Vein branch 2 */}
+            <Path
+              d={isPortrait
+                ? "M0 60 C30 55, 60 70, 90 65"
+                : "M0 80 C50 70, 110 95, 170 65 C210 45, 250 55, 280 40"}
+              stroke={veinSoft}
+              strokeWidth={1.0}
+              fill="none"
+            />
+            {/* Tertiary fine hairline */}
+            <Path
+              d={isPortrait
+                ? "M40 125 C60 145, 80 140, 110 160"
+                : "M140 135 C170 155, 200 145, 260 165"}
+              stroke="rgba(255, 255, 255, 0.2)"
+              strokeWidth={0.6}
+              fill="none"
+            />
           </G>
         );
       }
 
       // ---------------------------------------------------------------------
-      // 7. CIRCUIT COLLECTION
+      // 18. WHITE MARBLE (Carrara with smoky grey veining)
       // ---------------------------------------------------------------------
-      case 'circuit-traces':
-      case 'circuit-schematic':
-      case 'circuit-pathways':
-      case 'circuit-connections':
-      case 'circuit-nodes':
-      case 'circuit-micro':
-      case 'circuit-structured': {
-        if (isPortrait) {
-          return (
-            <G opacity={0.7}>
-              <Path d="M10 20 V80 L35 105 V170" stroke={strokeColor} strokeWidth={1.4} fill="none" />
-              <Path d="M110 20 V80 L85 105 V170" stroke={strokeColor} strokeWidth={1.4} fill="none" />
-              <Path d="M35 50 H85" stroke={accent} strokeWidth={1.2} fill="none" />
-              <Path d="M35 130 H85" stroke={accent} strokeWidth={1.2} fill="none" />
-              <Circle cx={35} cy={50} r={2.5} fill={accent} />
-              <Circle cx={85} cy={50} r={2.5} fill={accent} />
-              <Circle cx={35} cy={130} r={2.5} fill={accent} />
-              <Circle cx={85} cy={130} r={2.5} fill={accent} />
-            </G>
-          );
-        }
+      case 'white-marble': {
+        const veinColor = 'rgba(75, 80, 92, 0.35)';
+        const veinSoft = 'rgba(120, 125, 138, 0.22)';
         return (
-          <G opacity={0.7}>
-            <Path d="M20 20 H100 L125 45 H260" stroke={strokeColor} strokeWidth={1.5} fill="none" />
-            <Path d="M20 156 H100 L125 131 H260" stroke={strokeColor} strokeWidth={1.5} fill="none" />
-            <Path d="M60 45 V131" stroke={accent} strokeWidth={1.2} fill="none" />
-            <Path d="M220 45 V131" stroke={accent} strokeWidth={1.2} fill="none" />
-            <Circle cx={60} cy={45} r={3} fill={accent} />
-            <Circle cx={60} cy={131} r={3} fill={accent} />
-            <Circle cx={220} cy={45} r={3} fill={accent} />
-            <Circle cx={220} cy={131} r={3} fill={accent} />
+          <G>
+            {/* Primary Carrara smoky vein */}
+            <Path
+              d={isPortrait
+                ? "M10 0 C30 45, 10 75, 40 110 C65 140, 50 160, 95 186"
+                : "M25 0 C55 45, 15 85, 75 115 C130 140, 185 120, 260 176"}
+              stroke={veinColor}
+              strokeWidth={1.5}
+              fill="none"
+            />
+            {/* Soft branch 1 */}
+            <Path
+              d={isPortrait
+                ? "M40 110 C65 115, 95 105, 120 125"
+                : "M75 115 C120 120, 175 90, 240 100"}
+              stroke={veinSoft}
+              strokeWidth={1.0}
+              fill="none"
+            />
+            {/* Soft branch 2 */}
+            <Path
+              d={isPortrait
+                ? "M0 50 C35 45, 70 65, 105 55"
+                : "M0 65 C60 55, 120 85, 180 60 C220 40, 255 50, 280 35"}
+              stroke={veinSoft}
+              strokeWidth={1.1}
+              fill="none"
+            />
+            {/* Subtle hairline */}
+            <Path
+              d={isPortrait
+                ? "M50 135 C70 150, 90 145, 115 160"
+                : "M150 130 C180 150, 215 140, 275 158"}
+              stroke="rgba(90, 95, 105, 0.18)"
+              strokeWidth={0.7}
+              fill="none"
+            />
           </G>
         );
       }
 
-      // ---------------------------------------------------------------------
-      // 8. SIGNATURE COLLECTION
-      // ---------------------------------------------------------------------
-      case 'signature-borders':
-      case 'signature-pinstripes':
-      case 'signature-corners':
-      case 'signature-embossed':
-      case 'signature-metallic':
-      case 'signature-linework':
-      case 'signature-layered':
-      default: {
-        const inset = isPortrait ? 8 : 12;
-        const inset2 = isPortrait ? 13 : 18;
-        return (
-          <G opacity={0.65}>
-            {/* Outer border inset */}
-            <Rect x={inset} y={inset} width={W - inset * 2} height={H - inset * 2} rx={isPortrait ? 8 : 12} stroke={strokeColor} strokeWidth={1} fill="none" />
-            <Rect x={inset2} y={inset2} width={W - inset2 * 2} height={H - inset2 * 2} rx={isPortrait ? 6 : 9} stroke={strokeColor} strokeWidth={0.6} strokeDasharray="3 2" fill="none" />
-            {/* Corner brackets */}
-            <Path d={`M${inset + 4} ${inset + 14} V${inset + 4} H${inset + 14}`} stroke={accent} strokeWidth={1.8} fill="none" />
-            <Path d={`M${W - inset - 4} ${inset + 14} V${inset + 4} H${W - inset - 14}`} stroke={accent} strokeWidth={1.8} fill="none" />
-            <Path d={`M${inset + 4} ${H - inset - 14} V${H - inset - 4} H${inset + 14}`} stroke={accent} strokeWidth={1.8} fill="none" />
-            <Path d={`M${W - inset - 4} ${H - inset - 14} V${H - inset - 4} H${W - inset - 14}`} stroke={accent} strokeWidth={1.8} fill="none" />
-          </G>
-        );
-      }
+      default:
+        return null;
     }
   };
 
@@ -565,5 +585,4 @@ function CardPatternRendererComponent({
   );
 }
 
-const CardPatternRenderer = React.memo(CardPatternRendererComponent);
-export default CardPatternRenderer;
+export default React.memo(CardPatternRendererComponent);

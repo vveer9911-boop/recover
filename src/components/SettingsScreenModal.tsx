@@ -6,33 +6,36 @@ import {
   StyleSheet,
   Pressable,
   ScrollView,
-  Switch,
   Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BlurView } from 'expo-blur';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { BRAND_NAME, fonts } from '../theme';
 import { useApp } from '../context/AppContext';
 import { AVATAR_PRESETS } from './EditProfileModal';
-import LegalNoticeModal from './LegalNoticeModal';
+import LegalNoticeModal, { LegalModalType } from './LegalNoticeModal';
+import { FirebaseAuthService } from '../services/firebaseAuthService';
 
 interface SettingsScreenModalProps {
   visible: boolean;
   onClose: () => void;
   onOpenEditProfile: () => void;
-  onStartTutorial?: () => void;
 }
 
 export default function SettingsScreenModal({
   visible,
   onClose,
   onOpenEditProfile,
-  onStartTutorial,
 }: SettingsScreenModalProps) {
   const insets = useSafeAreaInsets();
-  const { userName, userHandle, userAvatarIndex } = useApp();
+  const navigation = useNavigation<any>();
+  const { userName, userHandle, userAvatarIndex, deleteAccount } = useApp();
 
-  const [activeLegalType, setActiveLegalType] = useState<'terms' | 'privacy' | 'notices' | null>(null);
+  const [activeLegalType, setActiveLegalType] = useState<LegalModalType | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const displayName = userName.trim() ? userName : 'there';
   const displayHandle = userHandle.trim() ? `@${userHandle.replace(/^@/, '')}` : '@focus_champ';
@@ -49,6 +52,16 @@ export default function SettingsScreenModal({
           style: 'destructive',
           onPress: () => {
             onClose();
+            FirebaseAuthService.logout().catch(() => {});
+            AsyncStorage.removeItem('@recover_user_authenticated').catch(() => {});
+            try {
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              });
+            } catch (e) {
+              navigation.navigate('Login');
+            }
           },
         },
       ]
@@ -91,34 +104,7 @@ export default function SettingsScreenModal({
             <Feather name="chevron-right" size={20} color="#71717A" />
           </Pressable>
 
-          {/* Group 1: General Settings & Walkthrough */}
-          <View style={styles.cardGroup}>
-            <Pressable
-              style={({ pressed }) => [styles.itemRow, pressed && { opacity: 0.7 }]}
-              onPress={() => {
-                onClose();
-                onStartTutorial?.();
-              }}
-            >
-              <View style={styles.itemLeft}>
-                <Ionicons name="sparkles-outline" size={19} color="#FFFFFF" style={styles.itemIcon} />
-                <Text style={styles.itemTitle}>Walkthrough tutorial</Text>
-              </View>
-              <Feather name="chevron-right" size={19} color="#71717A" />
-            </Pressable>
-
-            <View style={styles.divider} />
-
-            <Pressable style={({ pressed }) => [styles.itemRow, pressed && { opacity: 0.7 }]}>
-              <View style={styles.itemLeft}>
-                <Ionicons name="options-outline" size={19} color="#FFFFFF" style={styles.itemIcon} />
-                <Text style={styles.itemTitle}>General settings</Text>
-              </View>
-              <Feather name="chevron-right" size={19} color="#71717A" />
-            </Pressable>
-          </View>
-
-          {/* Group 2: Display & Language */}
+          {/* Group 1: Display & Language */}
           <View style={styles.cardGroup}>
             <Pressable style={({ pressed }) => [styles.itemRow, pressed && { opacity: 0.7 }]}>
               <View style={styles.itemLeft}>
@@ -132,12 +118,15 @@ export default function SettingsScreenModal({
             </Pressable>
           </View>
 
-          {/* Group 3: Help & Legal */}
+          {/* Group 2: Help & Legal */}
           <View style={styles.cardGroup}>
-            <Pressable style={({ pressed }) => [styles.itemRow, pressed && { opacity: 0.7 }]}>
+            <Pressable
+              style={({ pressed }) => [styles.itemRow, pressed && { opacity: 0.7 }]}
+              onPress={() => setActiveLegalType('faq')}
+            >
               <View style={styles.itemLeft}>
                 <Ionicons name="help-circle-outline" size={19} color="#FFFFFF" style={styles.itemIcon} />
-                <Text style={styles.itemTitle}>FAQ</Text>
+                <Text style={styles.itemTitle}>FAQ & How It Works</Text>
               </View>
               <Feather name="chevron-right" size={19} color="#71717A" />
             </Pressable>
@@ -190,6 +179,15 @@ export default function SettingsScreenModal({
             <Ionicons name="exit-outline" size={18} color="#EF4444" style={{ marginRight: 6 }} />
             <Text style={styles.logOutText}>Log Out</Text>
           </Pressable>
+
+          {/* Delete Account Button */}
+          <Pressable
+            style={({ pressed }) => [styles.deleteAccountBtn, pressed && { opacity: 0.85 }]}
+            onPress={() => setShowDeleteModal(true)}
+          >
+            <Ionicons name="trash-outline" size={17} color="#EF4444" style={{ marginRight: 6 }} />
+            <Text style={styles.deleteAccountText}>Delete Account</Text>
+          </Pressable>
         </ScrollView>
 
         <LegalNoticeModal
@@ -197,6 +195,54 @@ export default function SettingsScreenModal({
           type={activeLegalType}
           onClose={() => setActiveLegalType(null)}
         />
+
+        {/* Apple-style Permission Dialog for Delete Account (Centered Modal) */}
+        <Modal
+          visible={showDeleteModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowDeleteModal(false)}
+        >
+          <View style={styles.dialogBackdrop}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowDeleteModal(false)} />
+            <View style={styles.systemAlert}>
+              <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFill} />
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(30,30,34,0.96)' }]} />
+              <View style={styles.alertBody}>
+                <Text style={styles.alertTitle}>Delete Account</Text>
+                <Text style={styles.alertMessage}>
+                  All your data will be permanently deleted from the database.
+                </Text>
+              </View>
+              <View style={styles.alertButtons}>
+                <Pressable
+                  style={styles.alertBtn}
+                  onPress={() => setShowDeleteModal(false)}
+                >
+                  <Text style={styles.alertBtnTextNormal}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.alertBtn, styles.alertBtnBorderLeft]}
+                  onPress={async () => {
+                    setShowDeleteModal(false);
+                    await deleteAccount();
+                    onClose();
+                    try {
+                      navigation.reset({
+                        index: 0,
+                        routes: [{ name: 'HowItWorks' }],
+                      });
+                    } catch (e) {
+                      navigation.navigate('HowItWorks');
+                    }
+                  }}
+                >
+                  <Text style={styles.alertBtnTextDestructive}>Delete</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     </Modal>
   );
@@ -310,11 +356,93 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     height: 52,
     marginTop: 10,
-    marginBottom: 16,
+    marginBottom: 10,
   },
   logOutText: {
     color: '#EF4444',
     fontFamily: fonts.bold,
     fontSize: 15,
+  },
+  deleteAccountBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.25)',
+    borderRadius: 26,
+    height: 52,
+    marginBottom: 20,
+  },
+  deleteAccountText: {
+    color: '#EF4444',
+    fontFamily: fonts.semibold,
+    fontSize: 15,
+  },
+  // Apple-Style Alert Dialog
+  dialogBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  systemAlert: {
+    width: 280,
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.5,
+    shadowRadius: 28,
+    elevation: 24,
+  },
+  alertBody: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 18,
+    alignItems: 'center',
+  },
+  alertTitle: {
+    fontSize: 17,
+    fontFamily: fonts.semibold,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 6,
+    letterSpacing: -0.4,
+  },
+  alertMessage: {
+    fontSize: 13,
+    fontFamily: fonts.regular,
+    color: 'rgba(255, 255, 255, 0.72)',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  alertButtons: {
+    flexDirection: 'row',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255, 255, 255, 0.18)',
+    height: 44,
+  },
+  alertBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alertBtnBorderLeft: {
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderLeftColor: 'rgba(255, 255, 255, 0.18)',
+  },
+  alertBtnTextNormal: {
+    fontSize: 17,
+    fontFamily: fonts.semibold,
+    color: '#0A84FF',
+  },
+  alertBtnTextDestructive: {
+    fontSize: 17,
+    fontFamily: fonts.regular,
+    color: '#FF453A',
   },
 });

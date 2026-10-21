@@ -1,15 +1,12 @@
 import React from 'react';
-import { Platform, StyleSheet, Text, View, Pressable } from 'react-native';
+import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { Chevrons, ChipIcon } from './Icons';
-import { colors, fonts, radii } from '../theme';
+import { fonts, radii } from '../theme';
 import { useApp } from '../context/AppContext';
 import { getCardDesign, CardDesign } from '../data/cardDesigns';
 import CardPatternRenderer from './CardPatternRenderer';
-
-const W = 280;
-const H = 176;
+import { RecoverWingedLogo, ChipIcon } from './Icons';
 
 export interface FocusCardProps {
   credits?: number;
@@ -43,279 +40,113 @@ function FocusCardComponent({
   const design = customDesign || getCardDesign(propDesignId || activeCardId);
   const palette = design.palette;
 
-  const isPortrait = orientation === 'portrait';
+  const isSmall = width !== undefined && width < 260;
+  const cardWidth = width || '100%';
+  const cardHeight = height || (width ? Math.round((width / 280) * 176) : 180);
 
-  // -------------------------------------------------------------------------
-  // LANDSCAPE PREVIEW MODE (For Horizontal Rows in Gallery)
-  // -------------------------------------------------------------------------
-  if (!isPortrait && width && width <= 250) {
-    const cardW = width;
-    const cardH = height || Math.round((width / 280) * 176);
+  const displayName = cardholderName && cardholderName.trim()
+    ? `${cardholderName.trim().toUpperCase()}'S CARD`
+    : "PETER'S CARD";
 
-    const previewContent = (
-      <View
-        style={[
-          styles.previewWrap,
-          { width: cardW, height: cardH },
-          isSelected && styles.previewSelectedWrap,
-        ]}
-      >
-        <LinearGradient
-          colors={palette.gradient}
-          start={palette.gradientStart || { x: 0, y: 0 }}
-          end={palette.gradientEnd || { x: 1, y: 1 }}
-          style={[
-            styles.previewCard,
-            {
-              borderColor: isSelected ? '#FFFFFF' : palette.borderColor,
-              borderWidth: isSelected ? 2 : 1,
-            },
-          ]}
-        >
-          {/* Surface Pattern */}
-          <CardPatternRenderer
-            patternType={design.patternType}
-            palette={palette}
-            orientation="landscape"
-          />
-
-          {/* Top row: Brand & Chevrons */}
-          <View style={styles.previewTopRow}>
-            <Text style={[styles.previewBrand, { color: palette.textColor }]}>
-              recover
-            </Text>
-            <View style={styles.previewChevWrap}>
-              <Chevrons size={38} color={palette.chevronColor} />
-            </View>
-          </View>
-
-          {/* Center right Chip */}
-          <View style={styles.previewChipWrap}>
-            <ChipIcon
-              size={26}
-              fill={palette.chipFill || '#D9D9DC'}
-              stroke={palette.chipBorder || '#F2F2F4'}
-            />
-          </View>
-
-          {/* Bottom live stats */}
-          <View style={styles.previewBottom}>
-            <View style={styles.previewBalanceRow}>
-              <Text style={[styles.previewZero, { color: palette.textColor }]}>
-                {credits}
-              </Text>
-              <Text style={[styles.previewUnit, { color: palette.subtextColor }]}>
-                credits
-              </Text>
-            </View>
-            <Text
-              numberOfLines={1}
-              style={[styles.previewLabel, { color: palette.subtextColor }]}
-            >
-              {cardholderName ? `FOCUS CARD • ${cardholderName.toUpperCase()}` : 'FOCUS CARD'}
-            </Text>
-          </View>
-
-          {/* Current / Active pill */}
-          {isApplied && (
-            <View style={styles.appliedPill}>
-              <Text style={styles.appliedPillText}>CURRENT</Text>
-            </View>
-          )}
-
-          {/* Selected checkmark badge */}
-          {isSelected && (
-            <View style={styles.selectedBadge}>
-              <Ionicons name="checkmark-circle" size={17} color="#2DD4BF" />
-            </View>
-          )}
-        </LinearGradient>
-      </View>
-    );
-
-    if (onPress) {
-      return (
-        <Pressable
-          onPress={onPress}
-          style={({ pressed }) => [pressed && { opacity: 0.88, transform: [{ scale: 0.98 }] }]}
-        >
-          {previewContent}
-        </Pressable>
-      );
-    }
-    return previewContent;
-  }
-
-  // -------------------------------------------------------------------------
-  // PORTRAIT MODE (Optional legacy fallback)
-  // -------------------------------------------------------------------------
-  if (isPortrait) {
-    const cardW = width || 120;
-    const cardH = height || 186;
-
-    const content = (
-      <View
-        style={[
-          styles.portraitWrap,
-          { width: cardW, height: cardH },
-          isSelected && styles.portraitSelectedWrap,
-        ]}
-      >
-        <LinearGradient
-          colors={palette.gradient}
-          start={palette.gradientStart || { x: 0, y: 0 }}
-          end={palette.gradientEnd || { x: 1, y: 1 }}
-          style={[
-            styles.portraitCard,
-            { borderColor: isSelected ? '#FFFFFF' : palette.borderColor },
-          ]}
-        >
-          {/* Surface Pattern */}
-          <CardPatternRenderer
-            patternType={design.patternType}
-            palette={palette}
-            orientation="portrait"
-          />
-
-          {/* Top Row: recover + chevrons */}
-          <View style={styles.portraitTopRow}>
-            <Text style={[styles.portraitBrand, { color: palette.textColor }]}>
-              recover
-            </Text>
-            <View style={{ transform: [{ scale: 0.28 }], marginRight: -12, marginTop: -4 }}>
-              <Chevrons size={70} color={palette.chevronColor} />
-            </View>
-          </View>
-
-          {/* Center Chip */}
-          <View style={styles.portraitCenter}>
-            <ChipIcon
-              size={32}
-              fill={palette.chipFill || '#D9D9DC'}
-              stroke={palette.chipBorder || '#F2F2F4'}
-            />
-          </View>
-
-          {/* Bottom Live Data: Balance & Screen time equivalent */}
-          <View style={styles.portraitBottom}>
-            <View style={styles.portraitBalanceRow}>
-              <Text style={[styles.portraitZero, { color: palette.textColor }]}>
-                {credits}
-              </Text>
-              <Text style={[styles.portraitUnit, { color: palette.subtextColor }]}>
-                cr
-              </Text>
-            </View>
-            <Text
-              numberOfLines={1}
-              style={[styles.portraitLabel, { color: palette.subtextColor }]}
-            >
-              {cardholderName ? cardholderName.toUpperCase() : 'FOCUS CARD'}
-            </Text>
-          </View>
-
-          {/* Active / Current indicator pill */}
-          {isApplied && (
-            <View style={styles.appliedPill}>
-              <Text style={styles.appliedPillText}>CURRENT</Text>
-            </View>
-          )}
-
-          {/* Selection indicator checkmark */}
-          {isSelected && (
-            <View style={styles.selectedBadge}>
-              <Ionicons name="checkmark-circle" size={17} color="#2DD4BF" />
-            </View>
-          )}
-        </LinearGradient>
-      </View>
-    );
-
-    if (onPress) {
-      return (
-        <Pressable
-          onPress={onPress}
-          style={({ pressed }) => [pressed && { opacity: 0.88, transform: [{ scale: 0.98 }] }]}
-        >
-          {content}
-        </Pressable>
-      );
-    }
-    return content;
-  }
-
-  // -------------------------------------------------------------------------
-  // LANDSCAPE MODE (Full Dashboard Card)
-  // -------------------------------------------------------------------------
-  const cardElement = (
-    <LinearGradient
-      colors={palette.gradient}
-      start={palette.gradientStart || { x: 0, y: 0 }}
-      end={palette.gradientEnd || { x: 1, y: 1 }}
+  const cardContent = (
+    <View
       style={[
-        styles.card,
-        {
-          borderColor: isSelected ? '#FFFFFF' : palette.borderColor,
-          borderWidth: isSelected ? 2.5 : 1,
-        },
+        styles.cardOuter,
+        typeof cardWidth === 'number' ? { width: cardWidth, height: cardHeight } : { width: '100%', height: cardHeight },
+        isSelected && styles.cardSelectedOuter,
       ]}
     >
-      {/* Surface Pattern */}
-      <CardPatternRenderer
-        patternType={design.patternType}
-        palette={palette}
-        orientation="landscape"
-      />
-
-      {/* Brand Text */}
-      <View style={styles.logo}>
-        <Text style={[styles.brandTitle, { color: palette.textColor }]}>recover</Text>
-      </View>
-
-      {/* Amount */}
-      <View style={styles.amount}>
-        <Text style={[styles.zero, { color: palette.textColor }]}>{credits}</Text>
-        <Text style={[styles.credits, { color: palette.textColor }]}>credits</Text>
-      </View>
-
-      {/* Screen-Time Equivalent */}
-      <Text style={[styles.eq, { color: palette.subtextColor }]}>
-        = {credits}m screen time
-      </Text>
-
-      {/* Chevrons */}
-      <View style={styles.chev}>
-        <Chevrons size={64} color={palette.chevronColor} />
-      </View>
-
-      {/* Chip */}
-      <View style={styles.chip}>
-        <ChipIcon
-          size={46}
-          fill={palette.chipFill || '#D9D9DC'}
-          stroke={palette.chipBorder || '#F2F2F4'}
+      <LinearGradient
+        colors={palette.gradient}
+        start={palette.gradientStart || { x: 0, y: 0 }}
+        end={palette.gradientEnd || { x: 0.9, y: 1 }}
+        style={[
+          styles.cardInner,
+          {
+            borderColor: isSelected ? '#FFFFFF' : palette.borderColor,
+            borderWidth: isSelected ? 2.5 : 1,
+          },
+        ]}
+      >
+        {/* Subtle SVG Vector Surface Texture / Micro-Pattern */}
+        <CardPatternRenderer
+          patternType={design.patternType}
+          palette={palette}
+          orientation={orientation}
         />
-      </View>
 
-      {/* Cardholder label */}
-      <Text style={[styles.label, { color: palette.subtextColor }]}>
-        {cardholderName ? `FOCUS CARD • ${cardholderName.toUpperCase()}` : 'FOCUS CARD'}
-      </Text>
-
-      {/* Current / Active pill */}
-      {isApplied && (
-        <View style={styles.appliedPill}>
-          <Text style={styles.appliedPillText}>CURRENT</Text>
+        {/* TOP LEFT: Recover Winged Logo (Black on bright cards 1, 4, 5, 6, 7, 9, 12, 13, 16; White on dark cards) */}
+        <View style={[styles.topLeftLogoWrap, isSmall && styles.topLeftLogoWrapSmall]}>
+          <RecoverWingedLogo
+            size={isSmall ? 32 : 44}
+            color={
+              palette.logoColor === 'black' || [1, 4, 5, 6, 7, 9, 12, 13, 16].includes(design.cardNumber)
+                ? 'black'
+                : 'white'
+            }
+          />
         </View>
-      )}
 
-      {/* Selected checkmark badge */}
-      {isSelected && (
-        <View style={styles.selectedBadge}>
-          <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
+        {/* CENTER RIGHT: EMV Metallic Chip */}
+        <View style={[styles.chipWrap, isSmall && styles.chipWrapSmall]}>
+          <ChipIcon
+            size={isSmall ? 34 : 46}
+            fill={palette.chipFill || '#D9D9DC'}
+            stroke={palette.chipBorder || '#F2F2F4'}
+          />
         </View>
-      )}
-    </LinearGradient>
+
+        {/* MIDDLE LEFT: Balance Number & "credits" */}
+        <View style={[styles.balanceWrap, isSmall && styles.balanceWrapSmall]}>
+          <Text
+            style={[
+              styles.creditsNum,
+              isSmall && styles.creditsNumSmall,
+              { color: palette.textColor },
+            ]}
+          >
+            {credits}
+          </Text>
+          <Text
+            style={[
+              styles.creditsUnit,
+              isSmall && styles.creditsUnitSmall,
+              { color: palette.textColor },
+            ]}
+          >
+            {' '}credits
+          </Text>
+        </View>
+
+        {/* BOTTOM LEFT: Cardholder Name */}
+        <Text
+          numberOfLines={1}
+          style={[
+            styles.cardholderLabel,
+            isSmall && styles.cardholderLabelSmall,
+            { color: palette.textColor },
+          ]}
+        >
+          {displayName}
+        </Text>
+
+        {/* APPLIED BADGE (CURRENT) */}
+        {isApplied && (
+          <View style={[styles.appliedPill, isSmall && styles.appliedPillSmall]}>
+            <Text style={[styles.appliedPillText, isSmall && styles.appliedPillTextSmall]}>
+              CURRENT
+            </Text>
+          </View>
+        )}
+
+        {/* SELECTED CHECKMARK BADGE */}
+        {isSelected && (
+          <View style={[styles.selectedBadge, isSmall && styles.selectedBadgeSmall]}>
+            <Ionicons name="checkmark-circle" size={isSmall ? 18 : 22} color="#FFFFFF" />
+          </View>
+        )}
+      </LinearGradient>
+    </View>
   );
 
   if (onPress) {
@@ -323,263 +154,172 @@ function FocusCardComponent({
       <Pressable
         onPress={onPress}
         style={({ pressed }) => [
-          styles.wrap,
-          width ? { width, height } : { width: '100%' },
-          isSelected && {
-            shadowColor: '#FFFFFF',
-            shadowOpacity: 0.5,
-            shadowRadius: 16,
-            elevation: 8,
-          },
+          styles.pressableWrap,
+          typeof cardWidth === 'number' ? { width: cardWidth } : { width: '100%' },
           pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] },
         ]}
       >
-        {cardElement}
+        {cardContent}
       </Pressable>
     );
   }
 
   return (
-    <View
-      style={[
-        styles.wrap,
-        width ? { width, height } : { width: '100%' },
-        isSelected && {
-          shadowColor: '#FFFFFF',
-          shadowOpacity: 0.5,
-          shadowRadius: 16,
-          elevation: 8,
-        },
-      ]}
-    >
-      {cardElement}
+    <View style={[styles.pressableWrap, typeof cardWidth === 'number' ? { width: cardWidth } : { width: '100%' }]}>
+      {cardContent}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  // Landscape
-  wrap: {
-    aspectRatio: W / H,
-    borderRadius: radii.focusCard,
-    shadowColor: '#000',
-    shadowOpacity: 0.5,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-  },
-  card: {
-    flex: 1,
-    borderRadius: radii.focusCard,
-    overflow: 'hidden',
-    borderWidth: 1,
-  },
-  logo: {
-    position: 'absolute',
-    left: 14,
-    top: 16,
-  },
-  brandTitle: {
-    fontFamily: fonts.bold,
-    fontSize: 15,
-    letterSpacing: -0.4,
-  },
-  amount: {
-    position: 'absolute',
-    left: 12,
-    top: '38%',
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-  },
-  zero: {
-    fontFamily: fonts.medium,
-    fontSize: 36,
-    lineHeight: 38,
-  },
-  credits: {
-    fontFamily: fonts.medium,
-    fontSize: 18,
-    marginLeft: 4,
-    marginBottom: 3,
-  },
-  eq: {
-    position: 'absolute',
-    left: 12,
-    top: '57%',
-    fontFamily: fonts.regular,
-    fontSize: 15,
-  },
-  chev: {
-    position: 'absolute',
-    left: '48%',
-    top: '42%',
-  },
-  chip: {
-    position: 'absolute',
-    left: '75%',
-    top: '48%',
-  },
-  label: {
-    position: 'absolute',
-    left: 12,
-    bottom: 18,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    fontWeight: '600',
-    fontSize: 12,
-    letterSpacing: 1.2,
-  },
+export default React.memo(FocusCardComponent);
 
-  // Portrait
-  portraitWrap: {
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.45,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
-  },
-  portraitSelectedWrap: {
-    shadowColor: '#2DD4BF',
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-  },
-  portraitCard: {
-    flex: 1,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1.2,
-    padding: 10,
-    justifyContent: 'space-between',
-  },
-  portraitTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  portraitBrand: {
-    fontFamily: fonts.bold,
-    fontSize: 11,
-    letterSpacing: -0.3,
-  },
-  portraitCenter: {
+const styles = StyleSheet.create({
+  pressableWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 4,
   },
-  portraitBottom: {
-    marginTop: 'auto',
+  cardOuter: {
+    borderRadius: radii.focusCard || 22,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 8,
   },
-  portraitBalanceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 2,
-  },
-  portraitZero: {
-    fontFamily: fonts.bold,
-    fontSize: 18,
-    lineHeight: 20,
-  },
-  portraitUnit: {
-    fontFamily: fonts.medium,
-    fontSize: 10,
-    marginLeft: 2,
-  },
-  portraitLabel: {
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    fontSize: 8.5,
-    fontWeight: '600',
-    letterSpacing: 0.6,
-  },
-  appliedPill: {
-    position: 'absolute',
-    top: 7,
-    left: 7,
-    backgroundColor: 'rgba(0, 0, 0, 0.72)',
-    paddingHorizontal: 5,
-    paddingVertical: 1.5,
-    borderRadius: 4,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  appliedPillText: {
-    color: '#2DD4BF',
-    fontFamily: fonts.bold,
-    fontSize: 7.5,
-    letterSpacing: 0.5,
-  },
-  // Landscape Preview (Horizontal Gallery Rows)
-  previewWrap: {
-    borderRadius: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.45,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  previewSelectedWrap: {
+  cardSelectedOuter: {
     shadowColor: '#FFFFFF',
     shadowOpacity: 0.35,
-    shadowRadius: 12,
+    shadowRadius: 14,
+    elevation: 10,
   },
-  previewCard: {
+  cardInner: {
     flex: 1,
-    borderRadius: 14,
+    borderRadius: radii.focusCard || 22,
+    position: 'relative',
     overflow: 'hidden',
-    padding: 10,
-    justifyContent: 'space-between',
   },
-  previewTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    zIndex: 2,
-  },
-  previewBrand: {
-    fontFamily: fonts.bold,
-    fontSize: 12,
-    letterSpacing: -0.3,
-  },
-  previewChevWrap: {
-    marginTop: -2,
-    marginRight: -4,
-  },
-  previewChipWrap: {
+
+  // Top Left Winged Logo
+  topLeftLogoWrap: {
     position: 'absolute',
-    right: 14,
-    top: '40%',
+    top: 16,
+    left: 18,
     zIndex: 2,
   },
-  previewBottom: {
-    marginTop: 'auto',
+  topLeftLogoWrapSmall: {
+    top: 10,
+    left: 12,
+  },
+
+  // Center Right EMV Chip
+  chipWrap: {
+    position: 'absolute',
+    right: 20,
+    top: '46%',
+    transform: [{ translateY: -18 }],
     zIndex: 2,
   },
-  previewBalanceRow: {
+  chipWrapSmall: {
+    right: 12,
+    top: '46%',
+    transform: [{ translateY: -14 }],
+  },
+
+  // Middle Left Balance
+  balanceWrap: {
+    position: 'absolute',
+    left: 18,
+    top: '50%',
+    transform: [{ translateY: -16 }],
     flexDirection: 'row',
     alignItems: 'baseline',
-    marginBottom: 2,
+    zIndex: 2,
   },
-  previewZero: {
+  balanceWrapSmall: {
+    left: 12,
+    top: '50%',
+    transform: [{ translateY: -12 }],
+  },
+  creditsNum: {
+    fontFamily: fonts.bold,
+    fontSize: 28,
+    letterSpacing: -0.6,
+  },
+  creditsNumSmall: {
+    fontSize: 20,
+    letterSpacing: -0.4,
+  },
+  creditsUnit: {
     fontFamily: fonts.medium,
-    fontSize: 22,
-    lineHeight: 24,
+    fontSize: 15,
+    letterSpacing: -0.2,
   },
-  previewUnit: {
-    fontFamily: fonts.medium,
-    fontSize: 11,
-    marginLeft: 3,
+  creditsUnitSmall: {
+    fontSize: 11.5,
+    letterSpacing: -0.1,
   },
-  previewLabel: {
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    fontSize: 8.5,
-    fontWeight: '600',
-    letterSpacing: 0.6,
+
+  // Bottom Left Cardholder Label
+  cardholderLabel: {
+    position: 'absolute',
+    left: 18,
+    bottom: 16,
+    fontFamily: fonts.semibold,
+    fontSize: 11.5,
+    letterSpacing: 1.2,
+    opacity: 0.88,
+    zIndex: 2,
+    maxWidth: '65%',
   },
+  cardholderLabelSmall: {
+    left: 12,
+    bottom: 10,
+    fontSize: 9,
+    letterSpacing: 0.8,
+  },
+
+  // Top Right Applied Pill (CURRENT)
+  appliedPill: {
+    position: 'absolute',
+    top: 14,
+    right: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    zIndex: 3,
+  },
+  appliedPillSmall: {
+    top: 8,
+    right: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  appliedPillText: {
+    fontFamily: fonts.bold,
+    fontSize: 9,
+    color: '#FFFFFF',
+    letterSpacing: 0.8,
+  },
+  appliedPillTextSmall: {
+    fontSize: 7.5,
+  },
+
+  // Selected Checkmark Badge
   selectedBadge: {
     position: 'absolute',
-    top: 6,
-    right: 6,
-    backgroundColor: '#000000',
-    borderRadius: 9,
-    zIndex: 10,
+    bottom: 14,
+    right: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    borderRadius: 12,
+    zIndex: 3,
+  },
+  selectedBadgeSmall: {
+    bottom: 8,
+    right: 8,
+    borderRadius: 10,
   },
 });
-
-const FocusCard = React.memo(FocusCardComponent);
-export default FocusCard;

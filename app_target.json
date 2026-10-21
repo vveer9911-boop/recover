@@ -1,0 +1,4 @@
+{
+  "target": "recover",
+  "comment": "Set to 'installer' for App A (Recover Installer) or 'recover' for App B (Recover Wallet)"
+}

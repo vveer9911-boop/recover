@@ -1,56 +1,56 @@
 {
   "expo": {
-    "name": " ",
+    "name": "recover",
     "slug": "recover",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/recover.jpg",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#ffffff",
-    "primaryColor": "#ffffff",
-    "splash": {
-      "image": "./assets/splash-coin.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
+    "backgroundColor": "#028BFF",
+    "primaryColor": "#028BFF",
     "ios": {
       "supportsTablet": true,
       "userInterfaceStyle": "dark",
-      "backgroundColor": "#ffffff",
-      "splash": {
-        "image": "./assets/splash-coin.png",
-        "resizeMode": "contain",
-        "backgroundColor": "#ffffff"
-      }
+      "backgroundColor": "#028BFF"
     },
     "android": {
+      "package": "com.recover.app",
       "adaptiveIcon": {
-        "backgroundColor": "#000000",
-        "foregroundImage": "./assets/recover.jpg",
-        "backgroundImage": "./assets/recover.jpg",
-        "monochromeImage": "./assets/recover.jpg"
+        "backgroundColor": "#028BFF",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "userInterfaceStyle": "dark",
-      "backgroundColor": "#ffffff",
-      "splash": {
-        "image": "./assets/splash-coin.png",
-        "resizeMode": "contain",
-        "backgroundColor": "#ffffff"
+      "backgroundColor": "#028BFF",
+      "navigationBar": {
+        "backgroundColor": "#000000",
+        "barStyle": "light-content"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/recover.jpg",
-      "backgroundColor": "#ffffff",
-      "splash": {
-        "image": "./assets/splash-coin.png",
-        "resizeMode": "contain",
-        "backgroundColor": "#ffffff"
-      }
+      "favicon": "./assets/favicon.png",
+      "backgroundColor": "#028BFF"
     },
     "plugins": [
+      "./plugins/withRecoverBlocker",
       "expo-font",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#028BFF",
+          "image": "./assets/splash-winged.png",
+          "resizeMode": "contain"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Recover uses your camera to ensure your phone remains face-down and undisturbed during your focus session."
+        }
+      ]
     ]
   }
 }

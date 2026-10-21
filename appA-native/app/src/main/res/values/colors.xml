@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+    <color name="brand_blue">#028BFF</color>
+    <color name="card_bg">#18181B</color>
+    <color name="text_muted">#A1A1AA</color>
+    <color name="text_dim">#71717A</color>
+    <color name="dialog_bg">#F2F2F7</color>
+    <color name="dialog_btn_text">#007AFF</color>
+    <color name="dialog_divider">#D1D1D6</color>
+</resources>
