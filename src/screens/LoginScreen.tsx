@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleG, RecoverWordmark } from '../components/Icons';
 import { fonts } from '../theme';
 import { FirebaseAuthService } from '../services/firebaseAuthService';
+import ThinkingOrbsModal from '../components/ThinkingOrbsModal';
 import type { RootStackParamList } from '../../App';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
@@ -24,46 +25,90 @@ export default function LoginScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Thinking Orbs auth states
+  const [orbsVisible, setOrbsVisible] = useState(false);
+  const loading = orbsVisible;
+  const [orbsState, setOrbsState] = useState<'loading' | 'success'>('loading');
+  const [orbsTitle, setOrbsTitle] = useState('We are checking your details...');
+  const [orbsSubtitle, setOrbsSubtitle] = useState('Verifying credentials and fetching your live focus stats.');
 
   const handleEmailSignIn = async () => {
     if (!email.trim() || !password) {
-      await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
-      navigation.navigate('RecoverPro', { fromOnboarding: true });
+      setErrorMsg('Please enter both email and password');
       return;
     }
-    setLoading(true);
+
+    setOrbsTitle('We are checking your details...');
+    setOrbsSubtitle('Verifying your credentials and pulling your live focus stats.');
+    setOrbsState('loading');
+    setOrbsVisible(true);
     setErrorMsg('');
+
     try {
-      await FirebaseAuthService.loginWithEmail(email, password);
+      const user = await FirebaseAuthService.loginWithEmail(email, password);
       await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
-      navigation.navigate('RecoverPro', { fromOnboarding: true });
+      await AsyncStorage.setItem('@recover_onboarding_completed', 'true').catch(() => {});
+
+      // Fetch live user profile
+      const profile = await FirebaseAuthService.fetchUserProfile(user.uid);
+      setOrbsState('success');
+      setOrbsTitle(`Welcome back, ${profile?.displayName || 'Focus Champ'}!`);
+      setOrbsSubtitle('Your credits, streak, and focus sessions are loaded.');
+
+      setTimeout(() => {
+        setOrbsVisible(false);
+        navigation.navigate('Dashboard');
+      }, 1400);
     } catch {
+      // If user doesn't exist yet, attempt seamless account creation
       try {
+        setOrbsTitle('Creating your account...');
+        setOrbsSubtitle('Setting up your focus wallet and starting balance.');
         await FirebaseAuthService.signUpWithEmail(email, password);
         await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
-        navigation.navigate('RecoverPro', { fromOnboarding: true });
+        setOrbsState('success');
+        setOrbsTitle('Account created!');
+        setOrbsSubtitle('Welcome bonus credits added to your wallet.');
+
+        setTimeout(() => {
+          setOrbsVisible(false);
+          navigation.navigate('Dashboard');
+        }, 1400);
       } catch (err: unknown) {
+        setOrbsVisible(false);
         const error = err as { message?: string };
-        setErrorMsg(error?.message || 'Invalid credentials');
+        setErrorMsg(error?.message || 'Invalid email or password.');
       }
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
-    setLoading(true);
+    setOrbsTitle('We are checking your details...');
+    setOrbsSubtitle('Signing in with Google and loading your profile.');
+    setOrbsState('loading');
+    setOrbsVisible(true);
+    setErrorMsg('');
+
     try {
-      await FirebaseAuthService.loginWithGoogle();
+      const user = await FirebaseAuthService.loginWithGoogle();
       await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
-      navigation.navigate('RecoverPro', { fromOnboarding: true });
-    } catch {
-      await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
-      navigation.navigate('RecoverPro', { fromOnboarding: true });
-    } finally {
-      setLoading(false);
+      await AsyncStorage.setItem('@recover_onboarding_completed', 'true').catch(() => {});
+
+      const profile = await FirebaseAuthService.fetchUserProfile(user.uid);
+      setOrbsState('success');
+      setOrbsTitle(`Welcome back, ${profile?.displayName || 'Google Student'}!`);
+      setOrbsSubtitle('Loaded live focus stats and credit balance.');
+
+      setTimeout(() => {
+        setOrbsVisible(false);
+        navigation.navigate('Dashboard');
+      }, 1400);
+    } catch (err: unknown) {
+      setOrbsVisible(false);
+      const error = err as { message?: string };
+      setErrorMsg(error?.message || 'Google sign-in could not complete.');
     }
   };
 
@@ -181,6 +226,14 @@ export default function LoginScreen({ navigation }: Props) {
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Thinking Orbs Authentication Overlay */}
+      <ThinkingOrbsModal
+        visible={orbsVisible}
+        state={orbsState}
+        title={orbsTitle}
+        subtitle={orbsSubtitle}
+      />
     </KeyboardAvoidingView>
   );
 }

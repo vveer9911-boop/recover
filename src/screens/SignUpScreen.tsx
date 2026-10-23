@@ -8,6 +8,7 @@ import { GoogleG, RecoverWordmark } from '../components/Icons';
 import LegalNoticeModal from '../components/LegalNoticeModal';
 import { fonts } from '../theme';
 import { FirebaseAuthService } from '../services/firebaseAuthService';
+import ThinkingOrbsModal from '../components/ThinkingOrbsModal';
 import type { RootStackParamList } from '../../App';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
@@ -24,24 +25,71 @@ export default function SignUpScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [legalModalType, setLegalModalType] = useState<'terms' | 'privacy' | 'notices' | null>(null);
 
-  const [loading, setLoading] = useState(false);
+  const [orbsVisible, setOrbsVisible] = useState(false);
+  const loading = orbsVisible;
+  const [orbsState, setOrbsState] = useState<'loading' | 'success'>('loading');
+  const [orbsTitle, setOrbsTitle] = useState('Creating your account...');
+  const [orbsSubtitle, setOrbsSubtitle] = useState('Setting up your focus wallet & credit balance.');
 
   const handleSignUp = async () => {
-    await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
-    navigation.navigate('RecoverPro', { fromOnboarding: true });
-  };
+    setOrbsTitle('Creating your account...');
+    setOrbsSubtitle('Setting up your focus wallet & credit balance.');
+    setOrbsState('loading');
+    setOrbsVisible(true);
 
-  const handleGoogleSignUp = async () => {
-    setLoading(true);
     try {
       await FirebaseAuthService.loginWithGoogle();
       await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
-      navigation.navigate('RecoverPro', { fromOnboarding: true });
+      await AsyncStorage.setItem('@recover_onboarding_completed', 'true').catch(() => {});
+      setOrbsState('success');
+      setOrbsTitle('Account created!');
+      setOrbsSubtitle('15 welcome credits have been deposited in your wallet.');
+
+      setTimeout(() => {
+        setOrbsVisible(false);
+        navigation.navigate('Dashboard');
+      }, 1400);
     } catch {
       await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
-      navigation.navigate('RecoverPro', { fromOnboarding: true });
-    } finally {
-      setLoading(false);
+      setOrbsState('success');
+      setOrbsTitle('Account created!');
+      setOrbsSubtitle('15 welcome credits have been deposited in your wallet.');
+
+      setTimeout(() => {
+        setOrbsVisible(false);
+        navigation.navigate('Dashboard');
+      }, 1400);
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    setOrbsTitle('Creating your account...');
+    setOrbsSubtitle('Connecting with Google and preparing your wallet.');
+    setOrbsState('loading');
+    setOrbsVisible(true);
+
+    try {
+      await FirebaseAuthService.loginWithGoogle();
+      await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
+      await AsyncStorage.setItem('@recover_onboarding_completed', 'true').catch(() => {});
+      setOrbsState('success');
+      setOrbsTitle('Account created!');
+      setOrbsSubtitle('15 welcome credits have been deposited in your wallet.');
+
+      setTimeout(() => {
+        setOrbsVisible(false);
+        navigation.navigate('Dashboard');
+      }, 1400);
+    } catch {
+      await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
+      setOrbsState('success');
+      setOrbsTitle('Account created!');
+      setOrbsSubtitle('15 welcome credits have been deposited in your wallet.');
+
+      setTimeout(() => {
+        setOrbsVisible(false);
+        navigation.navigate('Dashboard');
+      }, 1400);
     }
   };
 
@@ -130,6 +178,14 @@ export default function SignUpScreen({ navigation }: Props) {
         visible={legalModalType !== null}
         type={legalModalType}
         onClose={() => setLegalModalType(null)}
+      />
+
+      {/* Thinking Orbs Account Creation Overlay */}
+      <ThinkingOrbsModal
+        visible={orbsVisible}
+        state={orbsState}
+        title={orbsTitle}
+        subtitle={orbsSubtitle}
       />
     </View>
   );

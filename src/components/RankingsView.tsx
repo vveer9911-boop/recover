@@ -9,7 +9,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BRAND_NAME, colors, fonts } from '../theme';
+import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { db, auth } from '../config/firebase';
+import { BRAND_NAME, fonts } from '../theme';
 import { useApp } from '../context/AppContext';
 import MiniCardThumbnail from './MiniCardThumbnail';
 
@@ -71,9 +73,46 @@ function LaurelWreathRight() {
 
 export default function RankingsView({ onOpenSettings }: { onOpenSettings?: () => void }) {
   const insets = useSafeAreaInsets();
-  const { userName, userHandle, credits } = useApp();
+  const { userName, credits, focusSessions } = useApp();
 
   const displayName = userName.trim() ? userName : 'there';
+
+  // Real-time Firestore users
+  const [cloudUsers, setCloudUsers] = useState<LeaderboardUser[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, orderBy('credits', 'desc'), limit(25));
+        const snap = await getDocs(q);
+        if (isMounted && !snap.empty) {
+          const list: LeaderboardUser[] = [];
+          snap.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data.displayName && docSnap.id !== auth.currentUser?.uid) {
+              list.push({
+                id: docSnap.id,
+                name: data.displayName,
+                focusMinutes: data.credits || 15,
+                achievedAt: data.lastLoginAt || data.createdAt || 1000,
+                cardVariant: data.isPlus ? 'gold' : 'silver',
+              });
+            }
+          });
+          if (list.length > 0) {
+            setCloudUsers(list);
+          }
+        }
+      } catch (err) {
+        console.warn('Live leaderboard note:', err);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // 7-Day Cycle Countdown Calculation
   const [countdown, setCountdown] = useState<{ days: number; hours: number; dateRange: string }>({
@@ -113,10 +152,14 @@ export default function RankingsView({ onOpenSettings }: { onOpenSettings?: () =
     return () => clearInterval(interval);
   }, []);
 
-  // Base focus time for current user (convert credits earned / active focus)
-  const userFocusMinutes = Math.max(15, credits);
+  // Base focus time for current user (computed from actual focus sessions and wallet credits)
+  const totalSessionMinutes = useMemo(() => {
+    return (focusSessions || []).reduce((sum, s) => sum + (s.focusedDurationMinutes || 0), 0);
+  }, [focusSessions]);
 
-  // Community participants with names (handles removed)
+  const userFocusMinutes = Math.max(totalSessionMinutes, credits, 15);
+
+  // Active community participants
   const defaultParticipants: LeaderboardUser[] = useMemo(() => [
     { id: 'u1', name: 'Malo', focusMinutes: 4200, achievedAt: 1000, cardVariant: 'gold' },
     { id: 'u2', name: 'Tonkster', focusMinutes: 3220, achievedAt: 2000, cardVariant: 'silver' },
@@ -124,24 +167,28 @@ export default function RankingsView({ onOpenSettings }: { onOpenSettings?: () =
     { id: 'u4', name: 'Uplink', focusMinutes: 2310, achievedAt: 4000, cardVariant: 'dark' },
     { id: 'u5', name: 'Rex', focusMinutes: 2155, achievedAt: 5000, cardVariant: 'silver' },
     { id: 'u6', name: 'Climb', focusMinutes: 2140, achievedAt: 6000, cardVariant: 'dark' },
-    // Exact tie with reserve9301 to prove tie-breaker rule: newest achieved gets leader!
     { id: 'u7', name: 'Reserve', focusMinutes: 2140, achievedAt: 7000, cardVariant: 'user' },
   ], []);
 
   // Compute leaderboard with sorting & tie-breaker rule
   const leaderboard = useMemo(() => {
+    const latestTimestamp = (focusSessions && focusSessions.length > 0)
+      ? (focusSessions[focusSessions.length - 1].endTime || focusSessions[focusSessions.length - 1].startTime || 999999999)
+      : 999999999;
+
     const currentUserEntry: LeaderboardUser = {
       id: 'current-user',
       name: displayName,
       focusMinutes: userFocusMinutes,
-      achievedAt: 9999999999, // latest achieved
+      achievedAt: latestTimestamp, // deterministic timestamp based on latest session
       isCurrentUser: true,
       cardVariant: 'user',
     };
 
+    const peers = cloudUsers.length > 0 ? cloudUsers : defaultParticipants;
     const list = singleUserOnly
       ? [currentUserEntry]
-      : [...defaultParticipants, currentUserEntry];
+      : [...peers, currentUserEntry];
 
     // SORTING & TIE-BREAKER RULE:
     // 1. Primary: highest focus time wins.
@@ -152,7 +199,7 @@ export default function RankingsView({ onOpenSettings }: { onOpenSettings?: () =
       }
       return b.achievedAt - a.achievedAt; // Newest timestamp ranked higher
     });
-  }, [displayName, userFocusMinutes, singleUserOnly, defaultParticipants]);
+  }, [displayName, userFocusMinutes, singleUserOnly, defaultParticipants, cloudUsers, focusSessions]);
 
   // Find current user's rank
   const currentUserRankIndex = leaderboard.findIndex((u) => u.isCurrentUser);

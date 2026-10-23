@@ -22,6 +22,7 @@ import { RootStackParamList } from '../../App';
 import { useApp } from '../context/AppContext';
 import { RecoverBlocker } from '../services/recoverBlocker';
 import FocusCard from '../components/FocusCard';
+import ThinkingOrbsModal from '../components/ThinkingOrbsModal';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -71,7 +72,6 @@ export default function FocusSessionSetupScreen() {
   const navigation = useNavigation<NavigationProp>();
   const {
     credits,
-    setCredits,
     distractingApps,
     saveFocusSession,
   } = useApp();
@@ -93,6 +93,8 @@ export default function FocusSessionSetupScreen() {
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [showPauseMenu, setShowPauseMenu] = useState<boolean>(false);
   const [showQuitConfirm, setShowQuitConfirm] = useState<boolean>(false);
+  const [showCelebrationOrbs, setShowCelebrationOrbs] = useState<boolean>(false);
+  const [celebrationCredits, setCelebrationCredits] = useState<number>(0);
 
   // Motion Detection & Strikes
   const [strikes, setStrikes] = useState<number>(0);
@@ -270,10 +272,10 @@ export default function FocusSessionSetupScreen() {
         status: earnedMinutes >= minutes ? 'completed' : 'abandoned',
         creditsEarned: earnedCredits,
       });
-      setCredits((prev) => prev + earnedCredits);
-      setStage('session_summary');
+      setCelebrationCredits(earnedCredits);
+      setShowCelebrationOrbs(true);
     },
-    [minutes, saveFocusSession, setCredits]
+    [minutes, saveFocusSession]
   );
 
   // Active Focus Session Countdown & Native App Blocker
@@ -755,43 +757,25 @@ export default function FocusSessionSetupScreen() {
   }
 
   // ==========================================
-  // RENDER: STAGE 6 (SESSION SUMMARY)
+  // RENDER: STAGE 6 (SESSION COMPLETE - ORBS CELEBRATION)
   // ==========================================
-  if (stage === 'session_summary') {
-    const earnedCredits = Math.max(1, Math.round(elapsedSeconds / 60));
+  if (stage === 'session_summary' || showCelebrationOrbs) {
+    const earnedCredits = celebrationCredits || Math.max(1, Math.round(elapsedSeconds / 60));
 
     return (
       <View style={styles.activeSessionRoot}>
-        <SafeAreaView style={styles.sessionContainer} edges={['top', 'bottom']}>
-          <View style={styles.summaryCardWrap}>
-            <View style={styles.summaryCheckWrap}>
-              <Ionicons name="checkmark-circle" size={48} color="#10B981" />
-            </View>
-            <Text style={styles.summaryTitle}>Focus Session Saved</Text>
-            <Text style={styles.summarySub}>
-              You dedicated {Math.round(elapsedSeconds / 60)} minutes of uninterrupted focus.
-            </Text>
-
-            {/* Display Active Card */}
-            <View style={styles.cardContainer}>
-              <FocusCard width={280} credits={credits + earnedCredits} />
-            </View>
-
-            <View style={styles.earnedBadge}>
-              <Ionicons name="flash" size={16} color="#38BDF8" style={{ marginRight: 6 }} />
-              <Text style={styles.earnedBadgeText}>+{earnedCredits} Focus Credits Earned</Text>
-            </View>
-          </View>
-
-          <View style={styles.bottomBar}>
-            <Pressable
-              style={({ pressed }) => [styles.finishBtn, pressed && styles.btnPressed]}
-              onPress={() => navigation.navigate('Dashboard')}
-            >
-              <Text style={styles.finishBtnText}>Finish & Return to Dashboard</Text>
-            </Pressable>
-          </View>
-        </SafeAreaView>
+        <ThinkingOrbsModal
+          visible={true}
+          state="success"
+          title={`yaah you made over ${earnedCredits} credits.`}
+          subtitle="Your focus time and credits are updated in your wallet."
+          doneBtnText="Back to Dashboard"
+          autoCloseMs={3000}
+          onDone={() => {
+            setShowCelebrationOrbs(false);
+            navigation.navigate('Dashboard');
+          }}
+        />
       </View>
     );
   }

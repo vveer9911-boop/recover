@@ -29,9 +29,10 @@ object SessionInstaller {
                 }
 
                 val sessionId = packageInstaller.createSession(params)
-                session = packageInstaller.openSession(sessionId)
+                val currentSession = packageInstaller.openSession(sessionId)
+                session = currentSession
 
-                val out: OutputStream = session.openWrite("recover_app_b", 0, totalBytes)
+                val out: OutputStream = currentSession.openWrite("recover_app_b", 0, totalBytes)
                 val buffer = ByteArray(65536)
                 var bytesRead: Int
                 var totalWritten = 0L
@@ -45,7 +46,7 @@ object SessionInstaller {
                             onProgress(percent)
                         }
                     }
-                    session.fsync(output)
+                    currentSession.fsync(output)
                 }
 
                 val callbackIntent = Intent(context, InstallReceiver::class.java).apply {
@@ -58,7 +59,7 @@ object SessionInstaller {
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
                 )
 
-                session.commit(pendingIntent.intentSender)
+                currentSession.commit(pendingIntent.intentSender)
                 onComplete(true, null)
             }
         } catch (e: Exception) {
