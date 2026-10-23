@@ -233,12 +233,13 @@ export default function FocusSessionSetupScreen() {
   useEffect(() => {
     if (stage !== 'locking_in') return;
     let current = 0;
+    let postTimeout: ReturnType<typeof setTimeout> | null = null;
     const interval = setInterval(() => {
       current += 0.05;
       if (current >= 1) {
         clearInterval(interval);
         setLoadingProgress(1);
-        setTimeout(() => {
+        postTimeout = setTimeout(() => {
           setSecondsRemaining(minutes * 60);
           setElapsedSeconds(0);
           setStage('active_session');
@@ -248,7 +249,10 @@ export default function FocusSessionSetupScreen() {
       }
     }, 50);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (postTimeout) clearTimeout(postTimeout);
+    };
   }, [stage, minutes]);
 
   // Complete / Finish Session

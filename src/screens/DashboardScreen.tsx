@@ -436,7 +436,7 @@ export default function DashboardScreen() {
         onClose={() => setShowSettingsModal(false)}
         onOpenEditProfile={() => {
           setShowSettingsModal(false);
-          setTimeout(() => setShowEditProfileModal(true), 250);
+          requestAnimationFrame(() => setShowEditProfileModal(true));
         }}
       />
 

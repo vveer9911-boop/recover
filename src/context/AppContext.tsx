@@ -125,7 +125,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     if (auth.currentUser) {
-      FirebaseAuthService.saveCloudFocusSession(auth.currentUser.uid, session);
+      FirebaseAuthService.saveCloudFocusSession(auth.currentUser.uid, session).catch((err) => {
+        console.warn('Failed to sync cloud session:', err);
+      });
     }
   };
 
@@ -152,27 +154,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const unsub = FirebaseAuthService.onUserChange((user) => {
       if (user) {
         AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
-        FirebaseAuthService.touchUserProfile(user).then((profile) => {
-          if (profile) {
-            if (profile.displayName) setUserName(profile.displayName);
-            if (profile.userHandle) setUserHandle(profile.userHandle);
-            if (profile.userBio) setUserBio(profile.userBio);
-            if (typeof profile.userAvatarIndex === 'number') setUserAvatarIndex(profile.userAvatarIndex);
-            if (typeof profile.streak === 'number') setStreak(profile.streak);
-            if (typeof profile.credits === 'number') setCredits(profile.credits);
-            if (typeof profile.isPlus === 'boolean') setIsPlus(profile.isPlus);
-            if (profile.activeCardId) setActiveCardIdState(profile.activeCardId);
-            if (Array.isArray(profile.distractingApps) && profile.distractingApps.length > 0) {
-              setDistractingAppsState(profile.distractingApps);
+        FirebaseAuthService.touchUserProfile(user)
+          .then((profile) => {
+            if (profile) {
+              if (profile.displayName) setUserName(profile.displayName);
+              if (profile.userHandle) setUserHandle(profile.userHandle);
+              if (profile.userBio) setUserBio(profile.userBio);
+              if (typeof profile.userAvatarIndex === 'number') setUserAvatarIndex(profile.userAvatarIndex);
+              if (typeof profile.streak === 'number') setStreak(profile.streak);
+              if (typeof profile.credits === 'number') setCredits(profile.credits);
+              if (typeof profile.isPlus === 'boolean') setIsPlus(profile.isPlus);
+              if (profile.activeCardId) setActiveCardIdState(profile.activeCardId);
+              if (Array.isArray(profile.distractingApps) && profile.distractingApps.length > 0) {
+                setDistractingAppsState(profile.distractingApps);
+              }
+              if (Array.isArray(profile.focusSessions) && profile.focusSessions.length > 0) {
+                setFocusSessions(profile.focusSessions);
+              }
+              if (Array.isArray(profile.transactions) && profile.transactions.length > 0) {
+                setTransactions(profile.transactions);
+              }
             }
-            if (Array.isArray(profile.focusSessions) && profile.focusSessions.length > 0) {
-              setFocusSessions(profile.focusSessions);
-            }
-            if (Array.isArray(profile.transactions) && profile.transactions.length > 0) {
-              setTransactions(profile.transactions);
-            }
-          }
-        });
+          })
+          .catch((err) => {
+            console.warn('[Firestore] Profile sync warning:', err);
+          });
       }
     });
     return () => unsub();
@@ -191,6 +197,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isPlus,
         activeCardId,
         distractingApps,
+      }).catch((err) => {
+        console.warn('[Firestore] Profile change sync warning:', err);
       });
     }
   }, [credits, isPlus, activeCardId, distractingApps, userName, userHandle, userBio, userAvatarIndex, streak]);

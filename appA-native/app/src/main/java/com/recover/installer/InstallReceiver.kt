@@ -17,6 +17,9 @@ class InstallReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action != ACTION_INSTALL_STATUS) return
+        if (!intent.hasExtra(PackageInstaller.EXTRA_STATUS)) return
+
         val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)
         val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
 
