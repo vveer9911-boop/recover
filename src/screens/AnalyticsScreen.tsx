@@ -42,7 +42,7 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const FILTER_OPTIONS: Array<{ id: AnalyticsFilterPeriod; label: string; group?: string }> = [
+const FILTER_OPTIONS: { id: AnalyticsFilterPeriod; label: string; group?: string }[] = [
   { id: '7d', label: 'Last 7 days' },
   { id: '28d', label: 'Last 28 days' },
   { id: '90d', label: 'Last 90 days' },

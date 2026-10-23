@@ -26,7 +26,7 @@
 
         <receiver
             android:name=".InstallReceiver"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="com.recover.installer.INSTALL_STATUS" />
             </intent-filter>

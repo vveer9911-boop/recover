@@ -17,8 +17,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { BRAND_NAME, fonts } from '../theme';
 import { useApp } from '../context/AppContext';
-import { AVATAR_PRESETS } from './EditProfileModal';
-import EditProfileModal from './EditProfileModal';
+import EditProfileModal, { AVATAR_PRESETS } from './EditProfileModal';
 import SettingsScreenModal from './SettingsScreenModal';
 import LegalNoticeModal, { LegalModalType } from './LegalNoticeModal';
 

@@ -23,10 +23,6 @@
       },
       "userInterfaceStyle": "dark",
       "backgroundColor": "#028BFF",
-      "navigationBar": {
-        "backgroundColor": "#000000",
-        "barStyle": "light-content"
-      },
       "predictiveBackGestureEnabled": false
     },
     "web": {

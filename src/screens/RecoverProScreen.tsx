@@ -46,13 +46,13 @@ export default function RecoverProScreen({ navigation, route }: Props) {
   const [viewingBillingHistory, setViewingBillingHistory] = useState(false);
 
   // Invoices list state (empty by default per user request)
-  const [billingHistory, setBillingHistory] = useState<Array<{
+  const [billingHistory, setBillingHistory] = useState<{
     id: string;
     plan: string;
     date: string;
     amount: string;
     status: string;
-  }>>([]);
+  }[]>([]);
 
   // Apple-style cancel subscription modal state
   const [showCancelModal, setShowCancelModal] = useState(false);

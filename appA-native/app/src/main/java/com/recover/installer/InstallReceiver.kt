@@ -4,11 +4,16 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
-import android.widget.Toast
 
 class InstallReceiver : BroadcastReceiver() {
+
     companion object {
         const val ACTION_INSTALL_STATUS = "com.recover.installer.INSTALL_STATUS"
+        const val ACTION_INSTALL_SUCCESS = "com.recover.installer.INSTALL_SUCCESS"
+        const val ACTION_INSTALL_FAILED = "com.recover.installer.INSTALL_FAILED"
+        const val EXTRA_MESSAGE = "extra_message"
+        const val PREFS_NAME = "installer_prefs"
+        const val KEY_IS_UPDATED = "is_updated"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -29,15 +34,22 @@ class InstallReceiver : BroadcastReceiver() {
                 }
             }
             PackageInstaller.STATUS_SUCCESS -> {
-                Toast.makeText(context, "Recover Study Wallet installed successfully!", Toast.LENGTH_LONG).show()
-                val launchIntent = context.packageManager.getLaunchIntentForPackage("com.recover.app")
-                launchIntent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                if (launchIntent != null) {
-                    context.startActivity(launchIntent)
+                context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    .edit()
+                    .putBoolean(KEY_IS_UPDATED, true)
+                    .apply()
+
+                val successIntent = Intent(ACTION_INSTALL_SUCCESS).apply {
+                    setPackage(context.packageName)
                 }
+                context.sendBroadcast(successIntent)
             }
             else -> {
-                Toast.makeText(context, "Installation note: ${message ?: "Action required"}", Toast.LENGTH_LONG).show()
+                val failIntent = Intent(ACTION_INSTALL_FAILED).apply {
+                    setPackage(context.packageName)
+                    putExtra(EXTRA_MESSAGE, message ?: "Installation could not complete")
+                }
+                context.sendBroadcast(failIntent)
             }
         }
     }
