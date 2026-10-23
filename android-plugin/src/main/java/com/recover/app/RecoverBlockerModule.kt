@@ -6,11 +6,17 @@ import android.content.Intent
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 import com.facebook.react.bridge.*
+import com.facebook.react.module.annotations.ReactModule
 
+@ReactModule(name = RecoverBlockerModule.NAME)
 class RecoverBlockerModule(private val reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
 
-    override fun getName(): String = "RecoverBlockerModule"
+    companion object {
+        const val NAME = "RecoverBlockerModule"
+    }
+
+    override fun getName(): String = NAME
 
     @ReactMethod
     fun startFocus(minutes: Int, blockedApps: ReadableArray, promise: Promise) {

@@ -1,6 +1,5 @@
-import React, { useEffect } from 'react';
-import { Image, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withTiming } from 'react-native-reanimated';
+import React, { useEffect, useState } from 'react';
+import { Animated, Image, View, Easing } from 'react-native';
 
 export const COINS: [any, number, number, number, number][] = [
   [require('../../assets/coin1.png'), 268, 336, 150, 80],
@@ -17,17 +16,44 @@ export const REF_W = 736;
 export const REF_TITLE_Y = 628;
 
 function Coin({ src, x, y, w, h, i, scale }: { src: any; x: number; y: number; w: number; h: number; i: number; scale: number }) {
-  const t = useSharedValue(0);
-  useEffect(() => {
-    t.value = withDelay(
-      i * 250,
-      withRepeat(withTiming(1, { duration: 2800 + i * 200, easing: Easing.inOut(Easing.sin) }), -1, true)
-    );
-  }, [i, t]);
+  const [anim] = useState(() => new Animated.Value(0));
 
-  const style = useAnimatedStyle(() => ({
-    transform: [{ translateY: (t.value - 0.5) * 10 }, { rotate: `${(t.value - 0.5) * 6}deg` }],
-  }));
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, {
+          toValue: 1,
+          duration: 2800 + i * 200,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(anim, {
+          toValue: 0,
+          duration: 2800 + i * 200,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    const delayTimer = setTimeout(() => {
+      loop.start();
+    }, i * 250);
+
+    return () => {
+      clearTimeout(delayTimer);
+      loop.stop();
+    };
+  }, [anim, i]);
+
+  const translateY = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-5, 5],
+  });
+
+  const rotate = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['-3deg', '3deg'],
+  });
 
   return (
     <Animated.View
@@ -39,8 +65,8 @@ function Coin({ src, x, y, w, h, i, scale }: { src: any; x: number; y: number; w
           top: (y - REF_TITLE_Y) * scale,
           width: w * scale,
           height: h * scale,
+          transform: [{ translateY }, { rotate }],
         },
-        style,
       ]}
     >
       <Image source={src} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
