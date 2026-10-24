@@ -50,14 +50,23 @@ jobs:
         run: |
           npx expo prebuild --platform android --no-install
 
+      - name: Bundle App B Offline JavaScript & Assets
+        run: |
+          mkdir -p android/app/src/main/assets
+          npx expo export:embed --platform android --dev false --entry-file index.ts --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
+
       - name: Build App B (Recover Study Wallet APK)
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleRelease --no-daemon --stacktrace || ./gradlew assembleDebug --no-daemon --stacktrace
           cd ..
           mkdir -p build-outputs
-          cp android/app/build/outputs/apk/debug/app-debug.apk build-outputs/App-B-Recover-Wallet.apk
+          if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
+            cp android/app/build/outputs/apk/release/app-release.apk build-outputs/App-B-Recover-Wallet.apk
+          else
+            cp android/app/build/outputs/apk/debug/app-debug.apk build-outputs/App-B-Recover-Wallet.apk
+          fi
 
       - name: Bundle App B into App A Installer Assets
         run: |

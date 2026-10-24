@@ -1,4 +1,4 @@
-const { withAndroidManifest, withDangerousMod, withMainApplication, createRunOncePlugin } = require('@expo/config-plugins');
+const { withAndroidManifest, withDangerousMod, withMainApplication, withAppBuildGradle, createRunOncePlugin } = require('@expo/config-plugins');
 const fs = require('fs');
 const path = require('path');
 
@@ -139,9 +139,24 @@ const withRecoverMainApplication = (config) => {
   });
 };
 
+const withRecoverAppBuildGradle = (config) => {
+  return withAppBuildGradle(config, (config) => {
+    let contents = config.modResults.contents;
+    if (contents.includes('react {') && !contents.includes('debuggableVariants = []')) {
+      contents = contents.replace(
+        'react {',
+        'react {\n    debuggableVariants = []'
+      );
+    }
+    config.modResults.contents = contents;
+    return config;
+  });
+};
+
 function withRecoverBlocker(config) {
   config = withRecoverAndroidManifest(config);
   config = withRecoverMainApplication(config);
+  config = withRecoverAppBuildGradle(config);
   config = withRecoverNativeFiles(config);
   return config;
 }

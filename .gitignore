@@ -47,3 +47,4 @@ card2_test.png
 assets/*test*
 assets/temp*
 assets/*.zip
+*.apk
