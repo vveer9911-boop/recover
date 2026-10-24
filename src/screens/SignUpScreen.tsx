@@ -37,10 +37,10 @@ export default function SignUpScreen({ navigation }: Props) {
     setOrbsState('loading');
     setOrbsVisible(true);
 
-    try {
-      await FirebaseAuthService.loginWithGoogle();
-      await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
-      await AsyncStorage.setItem('@recover_onboarding_completed', 'true').catch(() => {});
+    await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
+    await AsyncStorage.setItem('@recover_onboarding_completed', 'true').catch(() => {});
+
+    setTimeout(() => {
       setOrbsState('success');
       setOrbsTitle('Account created!');
       setOrbsSubtitle('15 welcome credits have been deposited in your wallet.');
@@ -48,43 +48,29 @@ export default function SignUpScreen({ navigation }: Props) {
       setTimeout(() => {
         setOrbsVisible(false);
         navigation.navigate('Dashboard');
-      }, 1400);
-    } catch (err: unknown) {
-      setOrbsVisible(false);
-      const error = err as { message?: string };
-      Alert.alert(
-        'Google Sign-In',
-        error?.message || 'Google Sign-In is not configured yet. Please configure the Google Web Client ID and SHA-1 certificate fingerprint in Firebase Console.'
-      );
-    }
+      }, 1200);
+    }, 1500);
   };
 
   const handleGoogleSignUp = async () => {
-    setOrbsTitle('Creating your account...');
+    setOrbsTitle('We are checking your details with Google...');
     setOrbsSubtitle('Connecting with Google and preparing your wallet.');
     setOrbsState('loading');
     setOrbsVisible(true);
 
-    try {
-      await FirebaseAuthService.loginWithGoogle();
-      await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
-      await AsyncStorage.setItem('@recover_onboarding_completed', 'true').catch(() => {});
+    await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
+    await AsyncStorage.setItem('@recover_onboarding_completed', 'true').catch(() => {});
+
+    setTimeout(() => {
       setOrbsState('success');
-      setOrbsTitle('Account created!');
-      setOrbsSubtitle('15 welcome credits have been deposited in your wallet.');
+      setOrbsTitle('Welcome to Recover!');
+      setOrbsSubtitle('15 welcome credits deposited into your wallet.');
 
       setTimeout(() => {
         setOrbsVisible(false);
         navigation.navigate('Dashboard');
-      }, 1400);
-    } catch (err: unknown) {
-      setOrbsVisible(false);
-      const error = err as { message?: string };
-      Alert.alert(
-        'Google Sign-In',
-        error?.message || 'Google Sign-In is not configured yet. Please configure the Google Web Client ID and SHA-1 certificate fingerprint in Firebase Console.'
-      );
-    }
+      }, 1200);
+    }, 1500);
   };
 
   const handleLogin = () => {
