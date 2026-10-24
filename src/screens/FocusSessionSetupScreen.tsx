@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Platform,
   Modal,
   Image,
+  Vibration,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +17,6 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { Audio } from 'expo-av';
 import { Accelerometer } from 'expo-sensors';
 import { RootStackParamList } from '../../App';
 import { useApp } from '../context/AppContext';
@@ -99,54 +99,30 @@ export default function FocusSessionSetupScreen() {
   // Motion Detection & Strikes
   const [strikes, setStrikes] = useState<number>(0);
   const [warningSeconds, setWarningSeconds] = useState<number>(30);
-  const soundRef = useRef<Audio.Sound | null>(null);
-
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
-  // Load and unload alarm sound
-  useEffect(() => {
-    let soundObj: Audio.Sound | null = null;
-    Audio.Sound.createAsync(
-      require('../../assets/alarm.mp3'),
-      { shouldPlay: false, isLooping: true, volume: 1.0 }
-    )
-      .then(({ sound }) => {
-        soundObj = sound;
-        soundRef.current = sound;
-      })
-      .catch((err) => {
-        console.warn('Could not load alarm sound:', err);
-      });
-
-    return () => {
-      if (soundObj) {
-        soundObj.stopAsync().catch(() => {});
-        soundObj.unloadAsync().catch(() => {});
-      }
-    };
-  }, []);
-
-  // Alarm sound controller
+  // Alarm controller (haptics / vibration alert)
   const startAlarm = async () => {
     try {
-      if (soundRef.current) {
-        await soundRef.current.setPositionAsync(0);
-        await soundRef.current.playAsync();
-      }
+      Vibration.vibrate([400, 400], true);
     } catch (e) {
-      console.warn('Failed to play alarm:', e);
+      console.warn('Failed to start vibration alert:', e);
     }
   };
 
   const stopAlarm = async () => {
     try {
-      if (soundRef.current) {
-        await soundRef.current.stopAsync();
-      }
+      Vibration.cancel();
     } catch (e) {
-      console.warn('Failed to stop alarm:', e);
+      console.warn('Failed to stop vibration alert:', e);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      Vibration.cancel();
+    };
+  }, []);
 
   // Timer Dial setup pan responder
   const sweepAngle = (minutes / MAX_MINUTES) * 360;

@@ -378,29 +378,17 @@ export default function RecoverProScreen({ navigation, route }: Props) {
   };
 
   const handleUpgrade = () => {
-    setIsPlus(true);
-    if (fromOnboarding) {
-      navigation.navigate('Permissions');
-    } else {
-      if (navigation.canGoBack()) {
-        navigation.goBack();
-      } else {
-        navigation.navigate('Dashboard');
-      }
-    }
+    Alert.alert(
+      'In-App Purchase',
+      'Google Play Billing is not configured yet. Subscriptions are pending developer setup.'
+    );
   };
 
   const handleRestore = () => {
-    setIsPlus(true);
-    if (fromOnboarding) {
-      navigation.navigate('Permissions');
-    } else {
-      if (navigation.canGoBack()) {
-        navigation.goBack();
-      } else {
-        navigation.navigate('Dashboard');
-      }
-    }
+    Alert.alert(
+      'Restore Purchases',
+      'Google Play Billing is not configured yet. No active Google Play subscriptions found.'
+    );
   };
 
   return (

@@ -1,15 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Modal,
-  Animated,
-  Easing,
   Pressable,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts } from '../theme';
+import { fonts } from '../theme';
+import ThinkingOrbCanvas from './ThinkingOrbCanvas';
 
 interface Props {
   visible: boolean;
@@ -30,190 +28,39 @@ export default function ThinkingOrbsModal({
   doneBtnText,
   autoCloseMs,
 }: Props) {
-  const [loopAnim] = useState(() => new Animated.Value(0));
-  const [pulseAnim] = useState(() => new Animated.Value(0));
-  const [successScale] = useState(() => new Animated.Value(0.3));
-  const [successOpacity] = useState(() => new Animated.Value(0));
-
-  // Orbit loop (360 degrees continuous rotation)
   useEffect(() => {
-    if (!visible) return;
-
-    loopAnim.setValue(0);
-    pulseAnim.setValue(0);
-
-    const orbitLoop = Animated.loop(
-      Animated.timing(loopAnim, {
-        toValue: 1,
-        duration: 3200,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    );
-
-    const breatheLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1400,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 0,
-          duration: 1400,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    orbitLoop.start();
-    breatheLoop.start();
-
-    return () => {
-      orbitLoop.stop();
-      breatheLoop.stop();
-    };
-  }, [visible, loopAnim, pulseAnim]);
-
-  // Success animation transition
-  useEffect(() => {
-    if (state === 'success') {
-      Animated.parallel([
-        Animated.spring(successScale, {
-          toValue: 1,
-          friction: 6,
-          tension: 70,
-          useNativeDriver: true,
-        }),
-        Animated.timing(successOpacity, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-      if (autoCloseMs && onDone) {
-        const timer = setTimeout(() => {
-          onDone();
-        }, autoCloseMs);
-        return () => clearTimeout(timer);
-      }
-    } else {
-      successScale.setValue(0.3);
-      successOpacity.setValue(0);
+    if (visible && state === 'success' && autoCloseMs && onDone) {
+      const timer = setTimeout(() => {
+        onDone();
+      }, autoCloseMs);
+      return () => clearTimeout(timer);
     }
-  }, [state, autoCloseMs, onDone, successScale, successOpacity]);
+  }, [visible, state, autoCloseMs, onDone]);
 
   if (!visible) return null;
-
-  // Orbital rotations
-  const spin1 = loopAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
-  const spin2 = loopAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['360deg', '0deg'],
-  });
-  const spin3 = loopAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['120deg', '480deg'],
-  });
-
-  const coreScale = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.9, 1.15],
-  });
-
-  const auraOpacity = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.35, 0.75],
-  });
 
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          {state === 'loading' ? (
-            /* ============================================================ */
-            /* THINKING ORBS CLUSTER (Jakubantalik/thinking-orbs inspired) */
-            /* ============================================================ */
-            <View style={styles.clusterContainer}>
-              {/* Outer Ambient Glow Aura */}
-              <Animated.View
-                style={[
-                  styles.glowAura,
-                  {
-                    opacity: auraOpacity,
-                    transform: [{ scale: coreScale }],
-                  },
-                ]}
-              />
+          <View style={styles.canvasWrapper}>
+            <ThinkingOrbCanvas size={140} state={state} />
+          </View>
 
-              {/* Orbit Ring 1 (Clockwise) */}
-              <Animated.View style={[styles.orbitArm, { transform: [{ rotate: spin1 }] }]}>
-                <View style={[styles.orbNode, styles.orbWhite, { top: 6, left: 38 }]} />
-                <View style={[styles.orbNode, styles.orbCyan, { bottom: 8, right: 34, width: 14, height: 14 }]} />
-              </Animated.View>
+          <Text style={styles.title}>{title}</Text>
 
-              {/* Orbit Ring 2 (Counter-Clockwise) */}
-              <Animated.View style={[styles.orbitArm, { transform: [{ rotate: spin2 }] }]}>
-                <View style={[styles.orbNode, styles.orbBlue, { top: 38, right: 8, width: 16, height: 16 }]} />
-                <View style={[styles.orbNode, styles.orbCyan, { bottom: 32, left: 10, width: 12, height: 12 }]} />
-              </Animated.View>
+          {subtitle ? (
+            <Text style={styles.subtitle}>{subtitle}</Text>
+          ) : null}
 
-              {/* Orbit Ring 3 (Harmonic Angled) */}
-              <Animated.View style={[styles.orbitArm, { transform: [{ rotate: spin3 }] }]}>
-                <View style={[styles.orbNode, styles.orbWhite, { top: 18, right: 26, width: 11, height: 11 }]} />
-                <View style={[styles.orbNode, styles.orbBlue, { bottom: 16, left: 28, width: 13, height: 13 }]} />
-              </Animated.View>
-
-              {/* Central Glowing Nucleus */}
-              <Animated.View
-                style={[
-                  styles.nucleusOrb,
-                  {
-                    transform: [{ scale: coreScale }],
-                  },
-                ]}
-              >
-                <View style={styles.nucleusInnerGlow} />
-              </Animated.View>
-            </View>
-          ) : (
-            /* ============================================================ */
-            /* SUCCESS CELEBRATION RING & CHECKMARK */
-            /* ============================================================ */
-            <Animated.View
-              style={[
-                styles.successContainer,
-                {
-                  transform: [{ scale: successScale }],
-                  opacity: successOpacity,
-                },
-              ]}
-            >
-              <View style={styles.successRing}>
-                <Ionicons name="checkmark" size={38} color="#FFFFFF" />
-              </View>
-            </Animated.View>
-          )}
-
-          {/* Title & Subtitle */}
-          <Text style={styles.titleText}>{title}</Text>
-          {!!subtitle && <Text style={styles.subtitleText}>{subtitle}</Text>}
-
-          {/* Action / Done Button if provided */}
-          {!!doneBtnText && !!onDone && (
+          {state === 'success' && onDone && doneBtnText ? (
             <Pressable
-              style={({ pressed }) => [styles.doneBtn, pressed && { opacity: 0.85 }]}
+              style={({ pressed }) => [styles.doneBtn, pressed && styles.btnPressed]}
               onPress={onDone}
             >
               <Text style={styles.doneBtnText}>{doneBtnText}</Text>
             </Pressable>
-          )}
+          ) : null}
         </View>
       </View>
     </Modal>
@@ -223,145 +70,60 @@ export default function ThinkingOrbsModal({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.82)',
-    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.88)',
     justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: 24,
   },
   card: {
     width: '100%',
     maxWidth: 340,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0F0F12',
     borderRadius: 24,
     paddingVertical: 32,
     paddingHorizontal: 24,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    shadowColor: '#028BFF',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.35,
-    shadowRadius: 24,
-    elevation: 12,
+    borderColor: '#27272A',
   },
-  clusterContainer: {
+  canvasWrapper: {
     width: 140,
     height: 140,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
   },
-  glowAura: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(2, 139, 255, 0.28)',
-  },
-  orbitArm: {
-    position: 'absolute',
-    width: 130,
-    height: 130,
-  },
-  orbNode: {
-    position: 'absolute',
-    borderRadius: 999,
-  },
-  orbWhite: {
-    width: 14,
-    height: 14,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#FFFFFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 8,
-  },
-  orbCyan: {
-    width: 13,
-    height: 13,
-    backgroundColor: '#38BDF8',
-    shadowColor: '#38BDF8',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
-  },
-  orbBlue: {
-    width: 15,
-    height: 15,
-    backgroundColor: '#028BFF',
-    shadowColor: '#028BFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
-  },
-  nucleusOrb: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#028BFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#38BDF8',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 14,
-    elevation: 6,
-  },
-  nucleusInnerGlow: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#FFFFFF',
-    opacity: 0.9,
-  },
-  successContainer: {
-    width: 110,
-    height: 110,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  successRing: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: '#10B981',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  titleText: {
+  title: {
     fontSize: 18,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     color: '#FFFFFF',
     textAlign: 'center',
-    lineHeight: 25,
-    fontFamily: fonts?.bold || undefined,
+    marginBottom: 8,
   },
-  subtitleText: {
+  subtitle: {
     fontSize: 13,
-    color: '#94A3B8',
+    fontFamily: fonts.regular,
+    color: '#A1A1AA',
     textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 19,
-    fontFamily: fonts?.regular || undefined,
+    lineHeight: 18,
+    paddingHorizontal: 8,
   },
   doneBtn: {
-    marginTop: 22,
-    width: '100%',
-    height: 48,
-    backgroundColor: colors?.blue || '#028BFF',
-    borderRadius: 24,
+    marginTop: 24,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+    minWidth: 140,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   doneBtnText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#000000',
+    fontSize: 14,
+    fontFamily: fonts.semibold,
+  },
+  btnPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.98 }],
   },
 });

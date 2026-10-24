@@ -1,7 +1,6 @@
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInAnonymously,
   signOut,
   User,
   onAuthStateChanged,
@@ -57,14 +56,9 @@ export const FirebaseAuthService = {
   },
 
   async loginWithGoogle(): Promise<User> {
-    try {
-      const cred = await signInAnonymously(auth);
-      await this.touchUserProfile(cred.user, 'Google Student');
-      return cred.user;
-    } catch (e) {
-      console.warn('Google/Guest sign in fallback:', e);
-      throw e;
-    }
+    throw new Error(
+      'Google Sign-In is not configured yet. Please configure the Google Web Client ID and SHA-1 certificate fingerprint in Firebase Console.'
+    );
   },
 
   async logout(): Promise<void> {

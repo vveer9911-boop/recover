@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -49,16 +49,13 @@ export default function SignUpScreen({ navigation }: Props) {
         setOrbsVisible(false);
         navigation.navigate('Dashboard');
       }, 1400);
-    } catch {
-      await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
-      setOrbsState('success');
-      setOrbsTitle('Account created!');
-      setOrbsSubtitle('15 welcome credits have been deposited in your wallet.');
-
-      setTimeout(() => {
-        setOrbsVisible(false);
-        navigation.navigate('Dashboard');
-      }, 1400);
+    } catch (err: unknown) {
+      setOrbsVisible(false);
+      const error = err as { message?: string };
+      Alert.alert(
+        'Google Sign-In',
+        error?.message || 'Google Sign-In is not configured yet. Please configure the Google Web Client ID and SHA-1 certificate fingerprint in Firebase Console.'
+      );
     }
   };
 
@@ -80,16 +77,13 @@ export default function SignUpScreen({ navigation }: Props) {
         setOrbsVisible(false);
         navigation.navigate('Dashboard');
       }, 1400);
-    } catch {
-      await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
-      setOrbsState('success');
-      setOrbsTitle('Account created!');
-      setOrbsSubtitle('15 welcome credits have been deposited in your wallet.');
-
-      setTimeout(() => {
-        setOrbsVisible(false);
-        navigation.navigate('Dashboard');
-      }, 1400);
+    } catch (err: unknown) {
+      setOrbsVisible(false);
+      const error = err as { message?: string };
+      Alert.alert(
+        'Google Sign-In',
+        error?.message || 'Google Sign-In is not configured yet. Please configure the Google Web Client ID and SHA-1 certificate fingerprint in Firebase Console.'
+      );
     }
   };
 

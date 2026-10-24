@@ -6,14 +6,12 @@ import android.graphics.*
 import android.util.AttributeSet
 import android.view.View
 import android.view.animation.LinearInterpolator
-import kotlin.math.cos
-import kotlin.math.max
-import kotlin.math.sin
+import kotlin.math.*
 
 /**
- * Animated thinking orbs loader inspired by Jakubantalik/thinking-orbs.
- * Renders an organic cluster of breathing, orbiting particles around a glowing core.
- * Smoothly transitions from the active "Updating..." state into the completed "Updated!" state.
+ * 3D Dotted Thinking Orbs Loader faithfully ported from Jakubantalik/thinking-orbs (orbits mode).
+ * Uses orthographic 3D projection (makeProj), tilted orbital planes, depth-shaded dots,
+ * and traveling particles. Smoothly transitions to completed success state.
  */
 class ThinkingOrbsView @JvmOverloads constructor(
     context: Context,
@@ -30,25 +28,10 @@ class ThinkingOrbsView @JvmOverloads constructor(
     private var currentState = State.IDLE
     private var animTime = 0f
     private var completionProgress = 0f
-
     private var animator: ValueAnimator? = null
     private var completionAnimator: ValueAnimator? = null
 
-    // Palette: Recover Sky Blue, Soft Electric Cyan, Pure White, Emerald Success
-    private val colorCore = Color.parseColor("#028BFF")
-    private val colorCyan = Color.parseColor("#38BDF8")
-    private val colorWhite = Color.WHITE
-    private val colorSuccess = Color.parseColor("#10B981")
-
-    private val corePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-    }
-
-    private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-    }
-
-    private val orbPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
     }
 
@@ -56,175 +39,221 @@ class ThinkingOrbsView @JvmOverloads constructor(
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
+        color = Color.parseColor("#10B981")
     }
 
-    // Hand-tuned satellite orb parameters (distance, size, speed, phase, color)
-    private data class Orb(
-        val baseAngle: Float,
-        val baseDist: Float,
-        val radius: Float,
-        val speed: Float,
-        val phase: Float,
+    private data class ProjectedDot(
+        val x: Float,
+        val y: Float,
+        val z: Float,
+        val r: Float,
+        val alpha: Float,
         val color: Int
     )
 
-    private val orbs = listOf(
-        Orb(baseAngle = 0f, baseDist = 32f, radius = 7f, speed = 1.2f, phase = 0f, color = colorWhite),
-        Orb(baseAngle = 1.05f, baseDist = 42f, radius = 5.5f, speed = -0.9f, phase = 1.2f, color = colorCyan),
-        Orb(baseAngle = 2.1f, baseDist = 36f, radius = 8f, speed = 1.0f, phase = 2.4f, color = colorCore),
-        Orb(baseAngle = 3.14f, baseDist = 48f, radius = 5f, speed = -1.4f, phase = 3.6f, color = colorCyan),
-        Orb(baseAngle = 4.2f, baseDist = 34f, radius = 6.5f, speed = 1.1f, phase = 4.8f, color = colorWhite),
-        Orb(baseAngle = 5.2f, baseDist = 44f, radius = 6f, speed = -0.8f, phase = 0.8f, color = colorCore)
-    )
-
-    init {
-        setupAnimators()
+    private fun hashD(a: Double, b: Double): Double {
+        val h = sin(a * 12.9898 + b * 78.233) * 43758.5453
+        return h - floor(h)
     }
 
-    private fun setupAnimators() {
-        animator = ValueAnimator.ofFloat(0f, 1000f).apply {
-            duration = 300000L // Continuous smooth clock
-            interpolator = LinearInterpolator()
-            repeatCount = ValueAnimator.INFINITE
-            addUpdateListener {
-                animTime = it.animatedValue as Float
-                postInvalidateOnAnimation()
-            }
-        }
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        startAnimation()
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        stopAnimation()
     }
 
     fun startUpdating() {
         currentState = State.UPDATING
         completionProgress = 0f
-        visibility = VISIBLE
-        animator?.cancel()
-        animator?.start()
+        startAnimation()
         invalidate()
     }
 
-    fun setCompleted() {
+    fun complete(onFinished: (() -> Unit)? = null) {
         currentState = State.COMPLETED
         completionAnimator?.cancel()
         completionAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 550L
+            duration = 450
             addUpdateListener {
                 completionProgress = it.animatedValue as Float
-                postInvalidateOnAnimation()
+                invalidate()
             }
+            start()
         }
-        completionAnimator?.start()
+    }
+
+    fun setCompleted() {
+        complete()
     }
 
     fun reset() {
         currentState = State.IDLE
-        animator?.cancel()
-        completionAnimator?.cancel()
-        visibility = GONE
+        completionProgress = 0f
+        invalidate()
     }
 
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val density = resources.displayMetrics.density
-        val defaultSize = (160 * density).toInt()
-        val w = resolveSize(defaultSize, widthMeasureSpec)
-        val h = resolveSize(defaultSize, heightMeasureSpec)
-        setMeasuredDimension(w, h)
+    private fun startAnimation() {
+        if (animator?.isRunning == true) return
+        animator = ValueAnimator.ofFloat(0f, 1000f).apply {
+            duration = 100000
+            repeatCount = ValueAnimator.INFINITE
+            interpolator = LinearInterpolator()
+            addUpdateListener {
+                animTime = (it.animatedValue as Float) * 0.05f
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    private fun stopAnimation() {
+        animator?.cancel()
+        animator = null
+        completionAnimator?.cancel()
+        completionAnimator = null
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (currentState == State.IDLE) return
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (w <= 0f || h <= 0f) return
 
-        val cx = width / 2f
-        val cy = height / 2f
-        if (cx <= 0f || cy <= 0f) return
-        val density = resources.displayMetrics.density
+        val size = min(w, h)
+        val cx = w / 2f
+        val cy = h / 2f
+        val rBase = (size / 2f) * 0.82f
 
-        if (currentState == State.UPDATING) {
-            drawUpdatingOrbs(canvas, cx, cy, density)
-        } else if (currentState == State.COMPLETED) {
-            drawCompletedState(canvas, cx, cy, density)
+        if (currentState == State.COMPLETED) {
+            drawCompletedState(canvas, cx, cy, size)
+            return
+        }
+
+        // Exact math from Jakubantalik/thinking-orbs (orbits.ts)
+        val t = animTime.toDouble()
+        val yaw = t * 0.12
+        val tilt = 0.3
+        val sy = sin(yaw)
+        val cyw = cos(yaw)
+        val st = sin(tilt)
+        val ct = cos(tilt)
+
+        val dots = mutableListOf<ProjectedDot>()
+        val orbitN = 8
+        val ghostN = 24
+        val particles = 2
+
+        for (orb in 0 until orbitN) {
+            val h1 = hashD(orb.toDouble(), 1.7)
+            val h2 = hashD(orb.toDouble(), 5.2)
+            val h3 = hashD(orb.toDouble(), 8.9)
+            val ro = rBase * (0.45 + 0.52 * h1)
+            val th = h1 * 2.0 * Math.PI
+            val phi = acos(2.0 * h2 - 1.0)
+
+            val nx = sin(phi) * cos(th)
+            val ny = cos(phi)
+            val nz = sin(phi) * sin(th)
+            var ux = -ny
+            var uy = nx
+            val uz = 0.0
+            val ul = max(1e-6, sqrt(ux * ux + uy * uy))
+            ux /= ul
+            uy /= ul
+            val vx = ny * uz - nz * uy
+            val vy = nz * ux - nx * uz
+            val vz = nx * uy - ny * ux
+            val speed = (0.25 + 0.55 * h3) * (if (h3 > 0.5) 1.0 else -1.0)
+
+            // Ghost path dots
+            for (k in 0 until ghostN) {
+                val a = (k.toDouble() / ghostN.toDouble()) * 2.0 * Math.PI
+                val ox = (ux * cos(a) + vx * sin(a)) * ro
+                val oy = (uy * cos(a) + vy * sin(a)) * ro
+                val oz = (uz * cos(a) + vz * sin(a)) * ro
+
+                // makeProj
+                val x1 = ox * cyw + oz * sy
+                val z1 = -ox * sy + oz * cyw
+                val y1 = oy * ct - z1 * st
+                val z2 = oy * st + z1 * ct
+
+                val px = (cx + x1).toFloat()
+                val py = (cy - y1).toFloat()
+                val depth = (((z2 / ro) + 1.0) / 2.0).coerceIn(0.0, 1.0).toFloat()
+
+                val dotR = max(1.2f, 2.0f * (0.4f + 0.6f * depth))
+                val alpha = (0.35f * (0.3f + 0.7f * depth)).coerceIn(0.05f, 0.9f)
+                dots.add(ProjectedDot(px, py, z2.toFloat(), dotR, alpha, Color.parseColor("#38BDF8")))
+            }
+
+            // Traveling active particles
+            for (m in 0 until particles) {
+                val a = t * speed + (m.toDouble() / particles.toDouble()) * 2.0 * Math.PI + h2 * 6.0
+                val ox = (ux * cos(a) + vx * sin(a)) * ro
+                val oy = (uy * cos(a) + vy * sin(a)) * ro
+                val oz = (uz * cos(a) + vz * sin(a)) * ro
+
+                val x1 = ox * cyw + oz * sy
+                val z1 = -ox * sy + oz * cyw
+                val y1 = oy * ct - z1 * st
+                val z2 = oy * st + z1 * ct
+
+                val px = (cx + x1).toFloat()
+                val py = (cy - y1).toFloat()
+                val depth = (((z2 / ro) + 1.0) / 2.0).coerceIn(0.0, 1.0).toFloat()
+
+                val dotR = max(2.5f, 4.5f * (0.5f + 0.8f * depth))
+                val alpha = (0.7f + 0.3f * depth).coerceIn(0.1f, 1.0f)
+                dots.add(ProjectedDot(px, py, z2.toFloat(), dotR, alpha, Color.WHITE))
+            }
+        }
+
+        // Z-sort: draw back to front
+        dots.sortBy { it.z }
+
+        for (d in dots) {
+            dotPaint.color = d.color
+            dotPaint.alpha = (d.alpha * 255).toInt()
+            canvas.drawCircle(d.x, d.y, d.r, dotPaint)
         }
     }
 
-    private fun drawUpdatingOrbs(canvas: Canvas, cx: Float, cy: Float, density: Float) {
-        val t = animTime * 0.05f
-
-        // 1. Ambient pulsing background glow
-        val glowRadius = max(4f * density, (44f + 8f * sin(t * 1.5f)) * density)
-        glowPaint.color = Color.argb(45, 2, 139, 255)
-        canvas.drawCircle(cx, cy, glowRadius, glowPaint)
-
-        // 2. Central breathing nucleus orb
-        val coreRadius = max(3f * density, (16f + 3f * sin(t * 2.2f)) * density)
-        corePaint.shader = RadialGradient(
-            cx, cy, coreRadius,
-            intArrayOf(colorWhite, colorCore),
-            floatArrayOf(0.2f, 1.0f),
-            Shader.TileMode.CLAMP
-        )
-        canvas.drawCircle(cx, cy, coreRadius, corePaint)
-
-        // 3. Orbiting thinking orbs with harmonic weaving
-        for (orb in orbs) {
-            val angle = orb.baseAngle + t * orb.speed
-            val breathingDist = (orb.baseDist + 7f * sin(t * 1.8f + orb.phase)) * density
-            val ox = cx + cos(angle) * breathingDist
-            val oy = cy + sin(angle) * breathingDist
-            val orbR = max(1f * density, orb.radius * density * (0.85f + 0.25f * sin(t * 2.5f + orb.phase)))
-
-            // Soft aura
-            glowPaint.color = Color.argb(60, Color.red(orb.color), Color.green(orb.color), Color.blue(orb.color))
-            canvas.drawCircle(ox, oy, orbR * 1.8f, glowPaint)
-
-            // Solid orb core
-            orbPaint.color = orb.color
-            canvas.drawCircle(ox, oy, orbR, orbPaint)
-        }
-    }
-
-    private fun drawCompletedState(canvas: Canvas, cx: Float, cy: Float, density: Float) {
+    private fun drawCompletedState(canvas: Canvas, cx: Float, cy: Float, size: Float) {
         val p = completionProgress
+        val ringR = (size * 0.32f) * p
 
-        // Expanding victory ring
-        val ringRadius = max(5f * density, (32f + 6f * p) * density)
-        checkPaint.strokeWidth = 3.5f * density
-        checkPaint.color = colorSuccess
-        canvas.drawCircle(cx, cy, ringRadius, checkPaint)
+        // Emerald outer check ring
+        checkPaint.strokeWidth = 6f
+        checkPaint.alpha = (p * 255).toInt()
+        canvas.drawCircle(cx, cy, ringR, checkPaint)
 
-        // Soft green ambient fill
-        glowPaint.color = Color.argb((40 * p).toInt(), 16, 185, 129)
-        canvas.drawCircle(cx, cy, ringRadius, glowPaint)
-
-        // Checkmark stroke
-        if (p > 0.25f) {
-            val checkP = ((p - 0.25f) / 0.75f).coerceIn(0f, 1f)
+        // Emerald checkmark
+        if (p > 0.3f) {
+            val checkP = ((p - 0.3f) / 0.7f).coerceIn(0f, 1f)
             val path = Path().apply {
-                val startX = cx - 12f * density
-                val startY = cy + 1f * density
-                val midX = cx - 3f * density
-                val midY = cy + 10f * density
-                val endX = cx + 14f * density
-                val endY = cy - 8f * density
+                val leftX = cx - ringR * 0.38f
+                val leftY = cy + ringR * 0.02f
+                val midX = cx - ringR * 0.08f
+                val midY = cy + ringR * 0.32f
+                val rightX = cx + ringR * 0.38f
+                val rightY = cy - ringR * 0.28f
 
-                moveTo(startX, startY)
-                if (checkP <= 0.45f) {
-                    val subP = checkP / 0.45f
-                    lineTo(startX + (midX - startX) * subP, startY + (midY - startY) * subP)
+                moveTo(leftX, leftY)
+                if (checkP <= 0.4f) {
+                    val sub = checkP / 0.4f
+                    lineTo(leftX + (midX - leftX) * sub, leftY + (midY - leftY) * sub)
                 } else {
                     lineTo(midX, midY)
-                    val subP = (checkP - 0.45f) / 0.55f
-                    lineTo(midX + (endX - midX) * subP, midY + (endY - midY) * subP)
+                    val sub = (checkP - 0.4f) / 0.6f
+                    lineTo(midX + (rightX - midX) * sub, midY + (rightY - midY) * sub)
                 }
             }
-            checkPaint.color = Color.WHITE
-            checkPaint.strokeWidth = 4f * density
             canvas.drawPath(path, checkPaint)
         }
-    }
-
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        animator?.cancel()
-        completionAnimator?.cancel()
     }
 }

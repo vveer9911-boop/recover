@@ -326,25 +326,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const watchEmergencyAd = () => {
-    if (emergencyAdsWatched >= 3) {
-      return { success: false, message: 'You have already watched 3/3 emergency ads.' };
-    }
-    const nextCount = emergencyAdsWatched + 1;
-    setEmergencyAdsWatched(nextCount);
-    setCredits((prev) => prev + 10);
-    setTransactions((prev) => [
-      {
-        id: 'tx-ad-' + Date.now(),
-        title: 'Ad credits',
-        subtitle: `Emergency ad reward (${nextCount}/3)`,
-        amount: 10,
-        type: 'credit',
-        date: 'TODAY',
-        time: 'Just now',
-      },
-      ...prev,
-    ]);
-    return { success: true };
+    return {
+      success: false,
+      message: 'Rewarded ads are not configured yet (AdMob SDK pending developer setup).',
+    };
   };
 
   const deleteAccount = async () => {

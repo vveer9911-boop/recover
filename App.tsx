@@ -28,6 +28,7 @@ import AnalyticsScreen from './src/screens/AnalyticsScreen';
 import CardCustomizationScreen from './src/screens/CardCustomizationScreen';
 import GetStartedScreen from './src/screens/GetStartedScreen';
 import { AppProvider } from './src/context/AppContext';
+import ErrorBoundary from './src/components/ErrorBoundary';
 
 export type RootStackParamList = {
   AppOpen: undefined;
@@ -81,88 +82,90 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <AppProvider>
-        <NavigationContainer theme={{ ...DarkTheme, colors: { ...DarkTheme.colors, background: '#000' } }}>
-          <StatusBar style="light" />
-          <Stack.Navigator
-            initialRouteName={initialRoute}
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: '#000' },
-            }}
-          >
-            <Stack.Screen
-              name="AppOpen"
-              component={AppOpenSplashScreen}
-              options={{ animation: 'fade' }}
-            />
-            <Stack.Screen
-              name="HowItWorks"
-              component={HowItWorksScreen}
-              options={{ animation: 'fade' }}
-            />
-            <Stack.Screen
-              name="SignUp"
-              component={SignUpScreen}
-              options={{ animation: 'slide_from_right' }}
-            />
-            <Stack.Screen
-              name="Login"
-              component={LoginScreen}
-              options={{ animation: 'slide_from_right' }}
-            />
-            <Stack.Screen
-              name="RecoverPro"
-              component={RecoverProScreen}
-              options={{ animation: 'slide_from_right' }}
-            />
-            <Stack.Screen
-              name="Permissions"
-              component={PermissionsScreen}
-              options={{ animation: 'slide_from_right' }}
-            />
-            <Stack.Screen
-              name="Dashboard"
-              component={DashboardScreen}
-              options={{ gestureEnabled: false, animation: 'fade' }}
-            />
-            <Stack.Screen
-              name="Pricing"
-              component={PricingScreen}
-              options={{ animation: 'slide_from_bottom' }}
-            />
-            <Stack.Screen
-              name="Transactions"
-              component={TransactionsScreen}
-              options={{ animation: 'slide_from_bottom' }}
-            />
-            <Stack.Screen
-              name="Withdraw"
-              component={WithdrawScreen}
-              options={{ animation: 'slide_from_bottom' }}
-            />
-            <Stack.Screen
-              name="FocusSessionSetup"
-              component={FocusSessionSetupScreen}
-              options={{ animation: 'slide_from_bottom' }}
-            />
-            <Stack.Screen
-              name="Analytics"
-              component={AnalyticsScreen}
-              options={{ animation: 'slide_from_bottom' }}
-            />
-            <Stack.Screen
-              name="CardCustomization"
-              component={CardCustomizationScreen}
-              options={{ animation: 'slide_from_bottom' }}
-            />
-            <Stack.Screen
-              name="GetStarted"
-              component={GetStartedScreen}
-            />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </AppProvider>
+      <ErrorBoundary>
+        <AppProvider>
+          <NavigationContainer theme={{ ...DarkTheme, colors: { ...DarkTheme.colors, background: '#000' } }}>
+            <StatusBar style="light" />
+            <Stack.Navigator
+              initialRouteName={initialRoute}
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: '#000' },
+              }}
+            >
+              <Stack.Screen
+                name="AppOpen"
+                component={AppOpenSplashScreen}
+                options={{ animation: 'fade' }}
+              />
+              <Stack.Screen
+                name="HowItWorks"
+                component={HowItWorksScreen}
+                options={{ animation: 'fade' }}
+              />
+              <Stack.Screen
+                name="SignUp"
+                component={SignUpScreen}
+                options={{ animation: 'slide_from_right' }}
+              />
+              <Stack.Screen
+                name="Login"
+                component={LoginScreen}
+                options={{ animation: 'slide_from_right' }}
+              />
+              <Stack.Screen
+                name="RecoverPro"
+                component={RecoverProScreen}
+                options={{ animation: 'slide_from_right' }}
+              />
+              <Stack.Screen
+                name="Permissions"
+                component={PermissionsScreen}
+                options={{ animation: 'slide_from_right' }}
+              />
+              <Stack.Screen
+                name="Dashboard"
+                component={DashboardScreen}
+                options={{ gestureEnabled: false, animation: 'fade' }}
+              />
+              <Stack.Screen
+                name="Pricing"
+                component={PricingScreen}
+                options={{ animation: 'slide_from_bottom' }}
+              />
+              <Stack.Screen
+                name="Transactions"
+                component={TransactionsScreen}
+                options={{ animation: 'slide_from_bottom' }}
+              />
+              <Stack.Screen
+                name="Withdraw"
+                component={WithdrawScreen}
+                options={{ animation: 'slide_from_bottom' }}
+              />
+              <Stack.Screen
+                name="FocusSessionSetup"
+                component={FocusSessionSetupScreen}
+                options={{ animation: 'slide_from_bottom' }}
+              />
+              <Stack.Screen
+                name="Analytics"
+                component={AnalyticsScreen}
+                options={{ animation: 'slide_from_bottom' }}
+              />
+              <Stack.Screen
+                name="CardCustomization"
+                component={CardCustomizationScreen}
+                options={{ animation: 'slide_from_bottom' }}
+              />
+              <Stack.Screen
+                name="GetStarted"
+                component={GetStartedScreen}
+              />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </AppProvider>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }
