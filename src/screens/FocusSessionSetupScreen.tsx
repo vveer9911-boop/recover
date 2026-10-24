@@ -203,9 +203,29 @@ export default function FocusSessionSetupScreen() {
 
   // Trigger "Locked In" loading animation
   const handlePlacePhoneDown = () => {
+    try {
+      Vibration.vibrate(80);
+    } catch {}
     setStage('locking_in');
     setLoadingProgress(0);
   };
+
+  // Auto-detect when phone is placed face-down on table during AR placement
+  useEffect(() => {
+    if (stage !== 'ar_placement') return;
+
+    Accelerometer.setUpdateInterval(300);
+    const sub = Accelerometer.addListener(({ z }) => {
+      // Phone is flat face-down when z is strongly negative
+      if (z < -0.75) {
+        handlePlacePhoneDown();
+      }
+    });
+
+    return () => {
+      sub && sub.remove();
+    };
+  }, [stage]);
 
   // Animate loading ring during "locking_in"
   useEffect(() => {

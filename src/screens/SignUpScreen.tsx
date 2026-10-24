@@ -38,7 +38,6 @@ export default function SignUpScreen({ navigation }: Props) {
     setOrbsVisible(true);
 
     await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
-    await AsyncStorage.setItem('@recover_onboarding_completed', 'true').catch(() => {});
 
     setTimeout(() => {
       setOrbsState('success');
@@ -47,7 +46,7 @@ export default function SignUpScreen({ navigation }: Props) {
 
       setTimeout(() => {
         setOrbsVisible(false);
-        navigation.navigate('Dashboard');
+        navigation.navigate('RecoverPro', { fromOnboarding: true });
       }, 1200);
     }, 1500);
   };
@@ -59,7 +58,6 @@ export default function SignUpScreen({ navigation }: Props) {
     setOrbsVisible(true);
 
     await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
-    await AsyncStorage.setItem('@recover_onboarding_completed', 'true').catch(() => {});
 
     setTimeout(() => {
       setOrbsState('success');
@@ -68,7 +66,7 @@ export default function SignUpScreen({ navigation }: Props) {
 
       setTimeout(() => {
         setOrbsVisible(false);
-        navigation.navigate('Dashboard');
+        navigation.navigate('RecoverPro', { fromOnboarding: true });
       }, 1200);
     }, 1500);
   };

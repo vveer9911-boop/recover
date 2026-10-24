@@ -1,4 +1,4 @@
-name: Build Recover APKs (App A Installer & App B Wallet)
+name: Build Recover Standalone APK
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   build:
-    name: Build Native APKs
+    name: Build Native Recover APK
     runs-on: ubuntu-latest
 
     steps:
@@ -46,16 +46,16 @@ jobs:
       - name: Install Node Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Generate App B Native Android Project (Expo Prebuild)
+      - name: Generate Native Android Project (Expo Prebuild)
         run: |
           npx expo prebuild --platform android --no-install
 
-      - name: Bundle App B Offline JavaScript & Assets
+      - name: Bundle Offline JavaScript & Assets
         run: |
           mkdir -p android/app/src/main/assets
           npx expo export:embed --platform android --dev false --entry-file index.ts --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
 
-      - name: Build App B (Recover Study Wallet APK)
+      - name: Build Recover APK
         run: |
           cd android
           chmod +x gradlew
@@ -63,37 +63,20 @@ jobs:
           cd ..
           mkdir -p build-outputs
           if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
-            cp android/app/build/outputs/apk/release/app-release.apk build-outputs/App-B-Recover-Wallet.apk
+            cp android/app/build/outputs/apk/release/app-release.apk build-outputs/Recover.apk
           else
-            cp android/app/build/outputs/apk/debug/app-debug.apk build-outputs/App-B-Recover-Wallet.apk
+            cp android/app/build/outputs/apk/debug/app-debug.apk build-outputs/Recover.apk
           fi
 
-      - name: Bundle App B into App A Installer Assets
-        run: |
-          mkdir -p appA-native/app/src/main/assets
-          cp build-outputs/App-B-Recover-Wallet.apk appA-native/app/src/main/assets/recover-study-wallet.apk
-
-      - name: Set up Gradle for App A
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.7'
-
-      - name: Build App A (Recover Installer APK)
-        run: |
-          cd appA-native
-          gradle :app:assembleDebug --no-daemon --stacktrace
-          cd ..
-          cp appA-native/app/build/outputs/apk/debug/app-debug.apk build-outputs/App-A-Recover-Installer.apk
-
-      - name: Verify Generated APKs
+      - name: Verify Generated APK
         run: |
           ls -lh build-outputs/
 
-      - name: Upload Recover Installer APK (Only Installer Needed)
+      - name: Upload Recover Standalone APK
         uses: actions/upload-artifact@v4
         with:
-          name: Recover-Installer
-          path: build-outputs/App-A-Recover-Installer.apk
+          name: Recover-APK
+          path: build-outputs/Recover.apk
           if-no-files-found: error
 
       - name: Create or Update GitHub Release
@@ -102,4 +85,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release delete v1.0.0 --yes || true
-          gh release create v1.0.0 build-outputs/*.apk --title "Recover Focus Study Wallet v1.0.0" --notes "Self-contained Recover Installer (App A) bundling Recover Study Wallet (App B)." || true
+          gh release create v1.0.0 build-outputs/Recover.apk --title "Recover Focus Study Wallet v1.0.0" --notes "Single standalone Recover APK." || true

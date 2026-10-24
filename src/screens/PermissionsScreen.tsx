@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
+  AppState,
   Modal,
   Pressable,
   ScrollView,
@@ -92,14 +93,31 @@ export default function PermissionsScreen({ navigation }: Props) {
 
   const allPermissionsGranted = granted.accessibility && granted.notifications && granted.overlay;
 
-  // Check if Accessibility is already active natively
+  // Check if native permissions are active and re-check on AppState focus
+  const checkPermissions = useCallback(async () => {
+    try {
+      const [acc, ovr] = await Promise.all([
+        RecoverBlocker.isAccessibilityEnabled(),
+        RecoverBlocker.isOverlayEnabled(),
+      ]);
+      setGranted((prev) => ({
+        ...prev,
+        accessibility: acc || prev.accessibility,
+        overlay: ovr || prev.overlay,
+        notifications: true, // notifications default to allowed
+      }));
+    } catch {}
+  }, []);
+
   useEffect(() => {
-    RecoverBlocker.isAccessibilityEnabled().then((enabled) => {
-      if (enabled) {
-        setGranted((prev) => ({ ...prev, accessibility: true }));
+    checkPermissions();
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        checkPermissions();
       }
     });
-  }, []);
+    return () => sub.remove();
+  }, [checkPermissions]);
 
   const handleToggle = (perm: PermissionConfig) => {
     if (granted[perm.key]) {
@@ -120,11 +138,7 @@ export default function PermissionsScreen({ navigation }: Props) {
       if (key === 'accessibility') {
         await RecoverBlocker.openAccessibilitySettings();
       } else if (key === 'overlay') {
-        if (Platform.OS === 'android') {
-          try {
-            await Linking.openSettings();
-          } catch {}
-        }
+        await RecoverBlocker.openOverlaySettings();
       }
     }
   };
@@ -134,10 +148,6 @@ export default function PermissionsScreen({ navigation }: Props) {
   };
 
   const handleContinue = async () => {
-    if (!allPermissionsGranted) {
-      setShowIncompleteAlert(true);
-      return;
-    }
     await AsyncStorage.setItem('@recover_user_authenticated', 'true').catch(() => {});
     // Navigates directly into the Dashboard
     navigation.reset({ index: 0, routes: [{ name: 'Dashboard' }] });

@@ -17,11 +17,13 @@ import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path, Rect } from 'react-native-svg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import FocusCard from '../components/FocusCard';
 import TabBar, { TabType } from '../components/TabBar';
 import RewardBanner from '../components/RewardBanner';
 import StatCard from '../components/StatCard';
 import AppPickerModal from '../components/AppPickerModal';
+import OnboardingModal from '../components/OnboardingModal';
 import RankingsView from '../components/RankingsView';
 import AccountView from '../components/AccountView';
 import SettingsScreenModal from '../components/SettingsScreenModal';
@@ -240,8 +242,16 @@ export default function DashboardScreen() {
     saveFocusSession,
   } = useApp();
 
-  // If user has no name yet (just completed permissions), show the clean name prompt modal
-  const [showAskNameModal, setShowAskNameModal] = useState(!userName || !userName.trim());
+  // Onboarding walkthrough (Distracting apps, AR Mode, What's your name)
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem('@recover_onboarding_completed').then((completed) => {
+      if (completed !== 'true' || !userName || !userName.trim()) {
+        setShowOnboarding(true);
+      }
+    }).catch(() => {});
+  }, [userName]);
 
   const insets = useSafeAreaInsets();
   const headerH = insets.top + 50;
@@ -452,12 +462,13 @@ export default function DashboardScreen() {
         onClose={() => setShowDistractingAppsModal(false)}
       />
 
-      {/* Ask Name Modal after Permission is complete */}
-      <AskNameModal
-        visible={showAskNameModal}
-        onSave={(name) => {
-          setUserName(name);
-          setShowAskNameModal(false);
+      {/* Onboarding walkthrough modal (Distracting Apps, AR Mode, What's your name) */}
+      <OnboardingModal
+        visible={showOnboarding}
+        onClose={(name) => {
+          if (name) setUserName(name);
+          setShowOnboarding(false);
+          AsyncStorage.setItem('@recover_onboarding_completed', 'true').catch(() => {});
         }}
       />
     </View>

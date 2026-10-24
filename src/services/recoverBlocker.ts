@@ -9,6 +9,8 @@ export interface RecoverBlockerInterface {
   updateBlockedApps: (blockedApps: string[]) => Promise<boolean>;
   isAccessibilityEnabled: () => Promise<boolean>;
   openAccessibilitySettings: () => Promise<boolean>;
+  isOverlayEnabled: () => Promise<boolean>;
+  openOverlaySettings: () => Promise<boolean>;
 }
 
 // Map common display names to Android package identifiers
@@ -23,6 +25,11 @@ export const APP_PACKAGE_MAP: Record<string, string> = {
   Facebook: 'com.facebook.katana',
   Netflix: 'com.netflix.mediaclient',
   Twitch: 'tv.twitch.android.app',
+  WhatsApp: 'com.whatsapp',
+  FaceTime: 'com.apple.facetime',
+  Threads: 'com.instagram.barcelona',
+  LinkedIn: 'com.linkedin.android',
+  Chrome: 'com.android.chrome',
 };
 
 export const resolvePackageName = (appNameOrPackage: string): string => {
@@ -87,6 +94,28 @@ export const RecoverBlocker: RecoverBlockerInterface = {
     }
     try {
       return await RecoverBlockerModule.openAccessibilitySettings();
+    } catch {
+      return false;
+    }
+  },
+
+  async isOverlayEnabled(): Promise<boolean> {
+    if (Platform.OS !== 'android' || !RecoverBlockerModule) {
+      return false;
+    }
+    try {
+      return await RecoverBlockerModule.isOverlayEnabled();
+    } catch {
+      return false;
+    }
+  },
+
+  async openOverlaySettings(): Promise<boolean> {
+    if (Platform.OS !== 'android' || !RecoverBlockerModule) {
+      return false;
+    }
+    try {
+      return await RecoverBlockerModule.openOverlaySettings();
     } catch {
       return false;
     }
